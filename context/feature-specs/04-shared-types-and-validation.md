@@ -104,4 +104,4 @@ shape, `safeParse` fails loudly in one place instead of causing a confusing
   do a manual side-by-side check, this is not something the compiler catches for
   you
 
-**Status: not started**
+**Status: done**

@@ -5,7 +5,7 @@ memory or assumption, is the source of truth for what's actually built.
 
 ## Current Phase
 
-- `03-session-identity.md` done. Next: `04-shared-types-and-validation.md`.
+- `04-shared-types-and-validation.md` done. Next: `05-ai-client-setup.md`.
 
 ## Current Goal
 
@@ -55,6 +55,12 @@ memory or assumption, is the source of truth for what's actually built.
     Did not wire `getOrCreateSession()` into `app/page.tsx` in this step since
     that's `12-home-page-prep-list.md`'s scope, not `03`'s — see open question
     below for how that step should handle it.
+- `04-shared-types-and-validation.md` — `lib/types.ts` and `lib/validation.ts`
+  written exactly per spec (`zod` `^4.4.3` was already a dependency, no install
+  needed). Verified: `npx tsc --noEmit` passes; manual side-by-side check
+  confirms every interface in `types.ts` (`ResearchInput`, `ResearchFindings`,
+  `PrepConcept`, `PrepQuestion`, `PrepGuide`, `PrepStatus`, `InterviewTurn`)
+  has a corresponding Zod schema in `validation.ts`.
 
 ## In Progress
 
@@ -62,7 +68,7 @@ memory or assumption, is the source of truth for what's actually built.
 
 ## Next Up
 
-- `04-shared-types-and-validation.md`
+- `05-ai-client-setup.md`
 
 ## Open Questions
 
