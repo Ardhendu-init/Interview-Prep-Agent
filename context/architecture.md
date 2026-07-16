@@ -6,7 +6,7 @@
 | ----------- | ------------------------------------------ | ------------------------------------------------------------- |
 | Framework    | Next.js 15 (App Router) + TypeScript        | Single deployable unit — frontend + backend in one app         |
 | UI            | Tailwind CSS, utility classes only            | Styling — no component library, see ui-context.md               |
-| ORM             | Prisma                                          | Type-safe database access, migrations                           |
+| ORM             | Prisma 7                                        | Type-safe database access, migrations                           |
 | Database          | PostgreSQL via Supabase                           | Persistence — sessions, prep guides, interview turns             |
 | AI Provider          | Anthropic API (`@anthropic-ai/sdk`)                 | Research agent, guide generation, mock interviewer                |
 | Validation              | Zod                                                   | Runtime validation at every system boundary — see code-standards |
@@ -35,6 +35,14 @@
   `lib/ai/` or `lib/db/` — always through a Server Action.
 - `prisma/schema.prisma` — the database schema, the single source of truth for
   data shape (see `01-database-schema.md`).
+- `prisma.config.ts` — Prisma 7 connection config for the CLI (migrate, studio,
+  introspect). Prisma 7 removed `url`/`directUrl` from the `datasource` block in
+  `schema.prisma` entirely; the CLI now reads its connection string from this
+  file instead. It points at `DIRECT_URL` (migrations need the non-pooled
+  connection). The app's runtime `PrismaClient` (in `lib/db/client.ts`, added in
+  `02-database-client-and-migrations.md`) connects separately via a driver
+  adapter (`@prisma/adapter-pg`) using the pooled `DATABASE_URL` — this replaces
+  the old single-file `url`/`directUrl` split with a two-file one, same intent.
 - `context/` — this folder. Never imported by app code.
 
 ## Storage Model

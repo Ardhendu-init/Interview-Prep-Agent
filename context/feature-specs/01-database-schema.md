@@ -5,10 +5,19 @@ feature-spec assumes this schema exists and is migrated.
 
 **Datasource & generator**
 
-- `provider = "postgresql"`, `url = env("DATABASE_URL")`, plus
-  `directUrl = env("DIRECT_URL")` (Supabase requires the direct, non-pooled URL
-  for migrations — pooled `DATABASE_URL` for the app at runtime,
-  `DIRECT_URL` for `prisma migrate`)
+- Installed Prisma version is 7 (`npm install prisma` currently resolves to
+  7.x), which removed `url`/`directUrl` from the `datasource` block in
+  `schema.prisma` — the CLI now errors (`P1012`) if either is present there.
+  Connection config moves to a root-level `prisma.config.ts` instead. Adapted
+  as follows, same intent as originally written (pooled URL for the app,
+  direct URL for migrations), different mechanism:
+  - `schema.prisma`: `datasource db { provider = "postgresql" }` — no `url`
+  - `prisma.config.ts`: `defineConfig({ datasource: { url: env("DIRECT_URL") } })`
+    — this is what `prisma migrate dev` / `prisma studio` connect with
+  - The app's runtime `PrismaClient` (added in
+    `02-database-client-and-migrations.md`) will connect via a driver adapter
+    (`@prisma/adapter-pg`) using the pooled `DATABASE_URL`, not the schema file
+  - See `architecture.md` for the full explanation
 
 **Models — implement exactly this shape**
 
@@ -63,8 +72,16 @@ before the AI work finishes.
 
 **Verify**
 
+- `npx prisma validate` and `npx prisma generate` pass — confirmed locally
 - `npx prisma migrate dev --name init` runs clean against a real Supabase
-  `DATABASE_URL`
-- `npx prisma studio` shows all three tables with the fields above
+  `DIRECT_URL` — **blocked**: no real Supabase project/credentials available in
+  this environment. `.env` currently holds local placeholder values; running
+  this against them correctly fails with `P1010` (auth denied), not a schema
+  error, which confirms schema + `prisma.config.ts` are wired correctly. Needs
+  a real `DATABASE_URL` / `DIRECT_URL` from Supabase to actually run and to
+  generate the committed migration in `prisma/migrations/`.
+- `npx prisma studio` shows all three tables with the fields above — blocked
+  on the same real-credentials dependency
 
-**Status: not started**
+**Status: schema + config implemented, not yet migrated (needs real Supabase
+credentials — see Verify above)**
