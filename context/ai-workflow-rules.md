@@ -83,3 +83,4 @@ Update the relevant context file whenever implementation changes:
 5. `npx tsc --noEmit` passes
 6. If the step touched the database schema: a Prisma migration was generated and
    committed, not just `db push`-ed locally
+7. Don't commit by yourself instead give me commit message , if anytime i need you to commit i will ask explicitly 

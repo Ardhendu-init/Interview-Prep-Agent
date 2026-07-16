@@ -43,4 +43,4 @@ connection limit gets exhausted within minutes of local development.
 - Editing a file twice in dev mode (triggering two hot reloads) does not increase
   the number of open connections shown in the Supabase dashboard
 
-**Status: not started**
+**Status: done**
