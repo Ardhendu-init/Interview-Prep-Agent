@@ -5,7 +5,7 @@ memory or assumption, is the source of truth for what's actually built.
 
 ## Current Phase
 
-- `01-database-schema.md` done. Next: `02-database-client-and-migrations.md`.
+- `02-database-client-and-migrations.md` done. Next: `03-session-identity.md`.
 
 ## Current Goal
 
@@ -25,6 +25,16 @@ memory or assumption, is the source of truth for what's actually built.
   (`tjlvomfcrfkjykuxwgjr`); migration generated and committed at
   `prisma/migrations/20260716165320_init/`. `npx tsc --noEmit` and
   `npm run build` both pass.
+- `02-database-client-and-migrations.md` — `lib/db/client.ts` written: Prisma
+  client singleton stashed on `globalThis` in non-production, constructed with
+  a `PrismaPg` driver adapter (`@prisma/adapter-pg`, added as a dependency)
+  reading the pooled `DATABASE_URL`, since Prisma 7's generated client no
+  longer accepts a bare `new PrismaClient()` — it throws
+  `PrismaClientInitializationError` without an explicit `adapter`. Verified by
+  importing the module twice with cache-busting query strings (simulating two
+  hot reloads): both imports resolved to the same `PrismaClient` instance, and
+  a live `session.count()` query against the real Supabase database succeeded.
+  `npx tsc --noEmit` passes.
 
 ## In Progress
 
@@ -32,9 +42,7 @@ memory or assumption, is the source of truth for what's actually built.
 
 ## Next Up
 
-- `02-database-client-and-migrations.md` — Prisma client singleton in
-  `lib/db/client.ts`, using a driver adapter (`@prisma/adapter-pg`) with the
-  pooled `DATABASE_URL`, per the Prisma 7 deviation noted below
+- `03-session-identity.md`
 
 ## Open Questions
 
