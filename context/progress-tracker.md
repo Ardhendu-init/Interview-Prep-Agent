@@ -5,7 +5,7 @@ memory or assumption, is the source of truth for what's actually built.
 
 ## Current Phase
 
-- `02-database-client-and-migrations.md` done. Next: `03-session-identity.md`.
+- `03-session-identity.md` done. Next: `04-shared-types-and-validation.md`.
 
 ## Current Goal
 
@@ -35,6 +35,26 @@ memory or assumption, is the source of truth for what's actually built.
   hot reloads): both imports resolved to the same `PrismaClient` instance, and
   a live `session.count()` query against the real Supabase database succeeded.
   `npx tsc --noEmit` passes.
+- `03-session-identity.md` — `lib/session.ts` (cookie name
+  `interview_prep_session`, `getSessionIdFromCookie`, `setSessionCookie`:
+  httpOnly, `sameSite: "lax"`, 1-year `maxAge`, no `Secure` override) and
+  `lib/db/session.ts` (`getOrCreateSession`) written exactly per spec. Verified
+  end to end via a temporary Route Handler (removed after testing, DB rows
+  cleaned up): first-ever visit (no cookie) creates a `Session` row and sets
+  the cookie; a repeat request with a valid cookie reuses the same session id
+  with no new row/cookie; a request with a cookie whose row had been deleted
+  correctly mints a fresh session + cookie. `npx tsc --noEmit` and `npm run
+  build` both pass.
+  - **Deviation discovered while verifying:** confirmed by direct testing that
+    Next.js 16 throws if `cookies().set()` is called during a Server Component
+    render (`Cookies can only be modified in a Server Action or Route
+    Handler`). `architecture.md`'s Auth and Access Model previously said
+    "middleware or the home page Server Component creates a Session row and
+    sets a cookie" — the Server Component half of that is not actually
+    possible for the *write* path. Updated `architecture.md` to record this.
+    Did not wire `getOrCreateSession()` into `app/page.tsx` in this step since
+    that's `12-home-page-prep-list.md`'s scope, not `03`'s — see open question
+    below for how that step should handle it.
 
 ## In Progress
 
@@ -42,11 +62,25 @@ memory or assumption, is the source of truth for what's actually built.
 
 ## Next Up
 
-- `03-session-identity.md`
+- `04-shared-types-and-validation.md`
 
 ## Open Questions
 
-- None open right now.
+- How should a brand-new visitor's session cookie actually get persisted,
+  given a Server Component can't write cookies? Two reasonable options once
+  `09-server-actions-preps.md` or `12-home-page-prep-list.md` is reached: (a)
+  home page renders fine without a cookie yet (empty state, nothing to
+  persist), and the cookie gets set for real on the first Server Action call
+  (e.g. submitting "New Prep") — zero new files, but a home-page-only visitor
+  who never takes an action doesn't get a stable session across reloads; (b)
+  add a `proxy.ts` (Next 16's renamed `middleware.ts`, defaults to Node.js
+  runtime) that pre-seeds the cookie (and the `Session` row) on any request
+  missing one, before the Server Component renders — gives every visitor a
+  stable session immediately, at the cost of a new architectural boundary and
+  unverified behavior under the Vercel deployment adapter (`18-deployment-and-
+  infra.md` territory). Not decided — flagging instead of guessing since it's
+  not low-stakes (affects deployment architecture). Default leaning: (a), pick
+  it up explicitly when implementing `09` or `12`.
 
 ## Architecture Decisions
 

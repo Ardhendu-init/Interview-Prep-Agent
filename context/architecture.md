@@ -60,9 +60,24 @@
 
 ## Auth and Access Model
 
-- No real authentication. On first visit, middleware or the home page Server
-  Component creates a `Session` row and sets a signed httpOnly cookie containing
-  the session id.
+- No real authentication. On first visit, a `Session` row is created and a
+  signed httpOnly cookie containing the session id is set.
+- **Verified constraint (Next.js 16, `03-session-identity.md`):** a Server
+  Component render cannot call `cookies().set()` — confirmed by direct testing,
+  Next.js throws `Cookies can only be modified in a Server Action or Route
+  Handler` if it tries. This means `getOrCreateSession()` can only *persist* a
+  newly created session (i.e. actually set the cookie) when called from a
+  Server Action or Route Handler — never from a plain Server Component render
+  (e.g. the home page listing past preps). `getOrCreateSession()` itself is
+  implemented exactly per spec and works correctly end to end when called from
+  a Server Action/Route Handler (verified: first visit creates a session +
+  cookie, a repeat visit with a valid cookie reuses it, a valid cookie whose
+  row was deleted gets a fresh session + cookie). How the home page's
+  first-ever-visit case is handled (bootstrap via the first Server Action call
+  vs. a `proxy.ts` — Next 16's renamed `middleware.ts` — pre-seeding the
+  cookie) is an open decision, deferred to whichever of
+  `09-server-actions-preps.md` or `12-home-page-prep-list.md` is implemented
+  first. See open question in `progress-tracker.md`.
 - Every `InterviewPrep` row is scoped to exactly one `Session` via a foreign key.
   A user can only read/mutate `InterviewPrep` rows belonging to their own session
   cookie — enforce this check in every `lib/db/` function that takes a prep id,
