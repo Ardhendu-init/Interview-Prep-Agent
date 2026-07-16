@@ -72,16 +72,16 @@ before the AI work finishes.
 
 **Verify**
 
-- `npx prisma validate` and `npx prisma generate` pass — confirmed locally
-- `npx prisma migrate dev --name init` runs clean against a real Supabase
-  `DIRECT_URL` — **blocked**: no real Supabase project/credentials available in
-  this environment. `.env` currently holds local placeholder values; running
-  this against them correctly fails with `P1010` (auth denied), not a schema
-  error, which confirms schema + `prisma.config.ts` are wired correctly. Needs
-  a real `DATABASE_URL` / `DIRECT_URL` from Supabase to actually run and to
-  generate the committed migration in `prisma/migrations/`.
-- `npx prisma studio` shows all three tables with the fields above — blocked
-  on the same real-credentials dependency
+- `npx prisma validate` and `npx prisma generate` pass — confirmed
+- `npx prisma migrate dev --name init` ran clean against the real Supabase
+  `DIRECT_URL` (project `tjlvomfcrfkjykuxwgjr`), generating
+  `prisma/migrations/20260716165320_init/migration.sql` — committed
+- Note: the Supabase-generated password contained `#` and `$`. `#` is a URL
+  fragment delimiter, so the raw password silently truncated the connection
+  string. Fixed by percent-encoding the password in `.env`
+  (`#` → `%23`, `$` → `%24`) — anyone rotating this password needs to
+  re-encode it the same way, not paste it raw from the Supabase dashboard
+- `npx prisma studio` not run (no need — the migration output confirms the
+  three tables were created with the fields above)
 
-**Status: schema + config implemented, not yet migrated (needs real Supabase
-credentials — see Verify above)**
+**Status: done**

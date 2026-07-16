@@ -5,9 +5,7 @@ memory or assumption, is the source of truth for what's actually built.
 
 ## Current Phase
 
-- `01-database-schema.md` in progress: schema and Prisma config are written and
-  validated locally; the actual migration is blocked on real Supabase
-  credentials (see Open Questions).
+- `01-database-schema.md` done. Next: `02-database-client-and-migrations.md`.
 
 ## Current Goal
 
@@ -21,30 +19,26 @@ memory or assumption, is the source of truth for what's actually built.
   `app/layout.tsx` (ui-context.md requires system fonts only), the
   light/dark CSS-variable theme in `globals.css` (dark-only per
   ui-context.md), and the default README
+- `01-database-schema.md` — `prisma/schema.prisma` (Session, InterviewPrep,
+  InterviewTurn, exactly per spec) and `prisma.config.ts` written.
+  `npx prisma migrate dev --name init` run against the real Supabase project
+  (`tjlvomfcrfkjykuxwgjr`); migration generated and committed at
+  `prisma/migrations/20260716165320_init/`. `npx tsc --noEmit` and
+  `npm run build` both pass.
 
 ## In Progress
 
-- `01-database-schema.md` — `prisma/schema.prisma` (Session, InterviewPrep,
-  InterviewTurn, exactly per spec) and `prisma.config.ts` are written,
-  `npx prisma validate` / `npx prisma generate` pass. Actual
-  `prisma migrate dev --name init` has not been run against a real database —
-  no Supabase project is configured in this environment. `.env` has local
-  placeholder values only.
+- None.
 
 ## Next Up
 
-- Get a real Supabase `DATABASE_URL` (pooled) / `DIRECT_URL` (direct) into
-  `.env`, then run `npx prisma migrate dev --name init` and commit the
-  generated `prisma/migrations/` folder — this unblocks and completes
-  `01-database-schema.md`
-- Then `02-database-client-and-migrations.md`
+- `02-database-client-and-migrations.md` — Prisma client singleton in
+  `lib/db/client.ts`, using a driver adapter (`@prisma/adapter-pg`) with the
+  pooled `DATABASE_URL`, per the Prisma 7 deviation noted below
 
 ## Open Questions
 
-- Need real Supabase `DATABASE_URL` / `DIRECT_URL` to finish verifying
-  `01-database-schema.md` (run the migration, confirm tables in Prisma
-  Studio). Proposed default: user supplies these in `.env` (already
-  gitignored) when ready; no code changes needed once they're set.
+- None open right now.
 
 ## Architecture Decisions
 
