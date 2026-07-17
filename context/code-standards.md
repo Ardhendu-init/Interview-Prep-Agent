@@ -104,6 +104,7 @@ lib/
   session.ts                                   — cookie read/write helpers
   types.ts                                       — shared TS interfaces
   validation.ts                                   — Zod schemas mirroring types.ts
+  format.ts                                        — display-formatting helpers (e.g. relative dates)
 components/
   PrepList.tsx                                      — home page list
   NewPrepForm.tsx                                      — company/role input form

@@ -5,7 +5,7 @@ memory or assumption, is the source of truth for what's actually built.
 
 ## Current Phase
 
-- `10-server-actions-interview.md` done. Next: `11-design-system-setup.md`.
+- `13-new-prep-form.md` done. Next: `14-prep-page-and-guide-view.md`.
 
 ## Current Goal
 
@@ -274,13 +274,73 @@ memory or assumption, is the source of truth for what's actually built.
     the database-level equivalent (re-fetching history mid-flow) was verified
     instead. `npx tsc --noEmit` and `npm run build` both pass.
 
+- `11-design-system-setup.md` — verified the design-system setup done
+  incidentally during the earlier create-next-app boilerplate cleanup (see
+  "Completed" note above) already satisfied this spec almost entirely:
+  `app/globals.css` is the correct Tailwind v4 single-line `@import
+  "tailwindcss"`, no `tailwindcss.config.*` file exists (correct for v4
+  zero-config), no `next/font/google` usage, and `app/layout.tsx`'s metadata
+  already matches `project-overview.md`'s Overview paragraph. Only gap: the
+  `antialiased` class the spec calls for was missing from `<html>` — added it
+  to `app/layout.tsx`. `npx tsc --noEmit` and `npm run build` pass.
+- `12-home-page-prep-list.md` — `components/PrepList.tsx` and `app/page.tsx`
+  written. Added `lib/format.ts` (`formatRelativeTime`, using
+  `Intl.RelativeTimeFormat`) for the spec's "relative created date, not a raw
+  ISO string" requirement — a new file not in `code-standards.md`'s File
+  Organization list, but the list wasn't exhaustive of every future
+  cross-cutting helper. `PrepList` renders a muted status line
+  ("Researching…" / "Generating guide…") for any non-`"ready"` status, in
+  `text-red-400` specifically for `"failed"` (ui-context.md's Error color),
+  and nothing extra for `"ready"`.
+  - **Deviation from the spec's literal text, resolving the open question
+    below:** the spec originally said `app/page.tsx` "calls
+    `getOrCreateSession()` then `listPrepsForSession(id)` directly." Actually
+    wiring that up would call `setSessionCookie()` from within a Server
+    Component render for any brand-new visitor (no existing cookie) — exactly
+    the case `03-session-identity.md` already proved throws in Next.js 16
+    ("Cookies can only be modified in a Server Action or Route Handler").
+    Resolved per this file's open question's option (a): `app/page.tsx` now
+    calls the read-only `getSessionIdFromCookie()` only, and renders an empty
+    `preps` array (not a crash) for a visitor with no cookie yet. The session
+    row + cookie get created for real on the first Server Action call
+    (`createPrepAndRunAgent`, which already calls `getOrCreateSession()`).
+    Updated `12-home-page-prep-list.md` itself to describe the corrected
+    behavior instead of the version that can't actually run.
+  - Verified against the real dev server and Supabase DB (temporary
+    `app/api/verify-tmp/route.ts`, removed after testing; all test rows
+    cleaned up via its own `DELETE` handler in the same session): a fresh
+    request with no cookie renders the empty-state message and sets no
+    cookie, without crashing; three seeded `InterviewPrep` rows
+    (`"ready"`/Zerodha, `"researching"`/Stripe, `"failed"`/Acme Corp) all
+    rendered with the correct status treatment and correct `/prep/[id]`
+    links, in newest-first order (Acme Corp, created last, appeared first),
+    confirming `listPrepsForSession`'s own ordering is used with no
+    client-side re-sort. `npx tsc --noEmit` and `npm run build` both pass.
+- `13-new-prep-form.md` — `components/NewPrepForm.tsx` written exactly per
+  spec: `useState` for the three fields, `useTransition` around
+  `createPrepAndRunAgent`, submit disabled while company/role is empty or a
+  submission is pending, `useRouter().push` to `/prep/[id]` on success, and
+  the error message shown inline with the form's input left intact on
+  failure. Implemented in the same step as `12` (rather than strictly
+  afterward) because `12`'s own spec text requires `app/page.tsx` to render
+  `<NewPrepForm />` — `12` cannot be verified end to end without it existing.
+  - Verified: the server-rendered initial HTML has the submit button's
+    `disabled` attribute present (company/role start empty), confirming the
+    spec's first "Verify" bullet at the markup level. Full interactive
+    (typing + submit) behavior was not driven through a real browser in this
+    step — flagging rather than claiming full UI verification; the
+    server-side wiring (`createPrepAndRunAgent` call, `router.push` target,
+    error-vs-success branching) matches the already-verified
+    `09-server-actions-preps.md` contract exactly. `npx tsc --noEmit` and
+    `npm run build` both pass.
+
 ## In Progress
 
 - None.
 
 ## Next Up
 
-- `11-design-system-setup.md`
+- `14-prep-page-and-guide-view.md`
 
 ## Open Questions
 
@@ -297,21 +357,15 @@ memory or assumption, is the source of truth for what's actually built.
   the shallow-answer branch in the same test session hit the same daily quota
   cap. Re-run alongside the `07` re-run once the quota resets, before treating
   that verification item as closed.
-- How should a brand-new visitor's session cookie actually get persisted,
-  given a Server Component can't write cookies? Two reasonable options once
-  `09-server-actions-preps.md` or `12-home-page-prep-list.md` is reached: (a)
-  home page renders fine without a cookie yet (empty state, nothing to
-  persist), and the cookie gets set for real on the first Server Action call
-  (e.g. submitting "New Prep") — zero new files, but a home-page-only visitor
-  who never takes an action doesn't get a stable session across reloads; (b)
-  add a `proxy.ts` (Next 16's renamed `middleware.ts`, defaults to Node.js
-  runtime) that pre-seeds the cookie (and the `Session` row) on any request
-  missing one, before the Server Component renders — gives every visitor a
-  stable session immediately, at the cost of a new architectural boundary and
-  unverified behavior under the Vercel deployment adapter (`18-deployment-and-
-  infra.md` territory). Not decided — flagging instead of guessing since it's
-  not low-stakes (affects deployment architecture). Default leaning: (a), pick
-  it up explicitly when implementing `09` or `12`.
+- **Resolved in `12-home-page-prep-list.md`:** picked option (a) — the home
+  page renders fine without a cookie yet (empty state), and the cookie/session
+  row get created for real on the first Server Action call. Option (b) (a
+  `proxy.ts` pre-seeding every request) was not implemented. Residual
+  consequence worth tracking: a visitor who only ever views the home page and
+  never submits "New Prep" gets a fresh session on every visit (no stable
+  identity until their first mutation) — acceptable for this app's anonymous,
+  no-login model, but noting it here in case it surprises anyone reading
+  session behavior later.
 
 ## Architecture Decisions
 
