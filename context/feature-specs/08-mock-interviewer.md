@@ -49,4 +49,6 @@ Must instruct the model to:
   answer and one deliberately strong answer in the same session must produce
   visibly different follow-up approaches
 
-**Status: not started**
+**Status: done** — see `progress-tracker.md` for verification detail and the
+one open item (full shallow-vs-strong divergence check blocked by daily API
+quota, same constraint as `07-guide-generator.md`).

@@ -5,7 +5,9 @@ memory or assumption, is the source of truth for what's actually built.
 
 ## Current Phase
 
-- `07-guide-generator.md` done. Next: `08-mock-interviewer.md`.
+- `08-mock-interviewer.md` done. Next: `09-server-actions-preps.md` (or
+  whichever numbered spec covers server actions for the interview turns —
+  check `feature-specs/` ordering before starting).
 
 ## Current Goal
 
@@ -147,6 +149,46 @@ memory or assumption, is the source of truth for what's actually built.
     rather than crashing. Re-run the second-company comparison once the daily
     quota resets, before treating `19-manual-verification.md` item 4 as fully
     closed. `npx tsc --noEmit` and `npm run build` both pass.
+- `08-mock-interviewer.md` — `lib/ai/mock-interviewer.ts` written per spec:
+  `interviewTurn(input, guide, history)` maps the full `InterviewTurn[]`
+  history into Gemini's multi-turn `Content[]` format (`"candidate"` →
+  `"user"`, `"interviewer"` → `"model"`), sends it with a system prompt built
+  from `input` (company/role) plus the guide's full concept list and question
+  bank, and returns the plain-text response. Empty history is handled by
+  passing a plain string nudge ("Begin the interview with your opening
+  question.") instead of an empty `Content[]`, and the system prompt
+  separately instructs the model to skip feedback and just ask an opening
+  question on the first turn. Stateless — no `lib/db/` import, matching the
+  spec's statelessness requirement; the calling Server Action (`10-server-
+  actions-interview.md`) owns persistence. Never throws: same top-level
+  `try/catch` + non-`"STOP"`-finish-reason pattern as `research-agent.ts` /
+  `guide-generator.ts`, falling back to the spec's suggested in-character
+  recovery line ("Sorry, let's pick this back up...") on any failure.
+  - Verified end to end against the real Gemini API (temporary script, not
+    committed), using a Zerodha/Backend-Engineer guide: turn 1 with empty
+    history correctly returned only an opening question with no feedback
+    text, satisfying requirement 7. A second branch continuing from that same
+    opening question with a deliberately strong, detailed answer (sharded
+    in-memory order book, lock-free ring buffers, NATS fills, async Kafka
+    persistence) correctly returned brief specific praise followed by a
+    follow-up question, satisfying the feedback-then-next-question shape in
+    requirement 4.
+  - **Could not complete the full shallow-vs-strong divergence check** (spec's
+    "Verify" section / `19-manual-verification.md` item 5, which wants both a
+    shallow and a strong answer in the *same* session compared side by side):
+    the shallow-answer call in the same test session hit the same Gemini
+    free-tier daily cap (`GenerateRequestsPerDayPerProjectPerModel-FreeTier`,
+    20 requests/day, HTTP 429) already flagged as an open item under
+    `07-guide-generator.md` above — confirmed via a raw debug call showing the
+    429 `RESOURCE_EXHAUSTED` response directly, not a code defect. This is
+    itself a valid, useful confirmation of the "never throws" contract: the
+    production `interviewTurn()` call in the same failing case correctly
+    returned the fallback recovery line instead of crashing, live, under a
+    real quota exhaustion rather than a simulated one. Re-run the full
+    shallow-vs-strong same-session comparison once the daily quota resets
+    (next UTC day), alongside the still-open `07` second-company comparison,
+    before treating `19-manual-verification.md` item 5 as fully closed.
+    `npx tsc --noEmit` and `npm run build` both pass.
 
 ## In Progress
 
@@ -154,7 +196,7 @@ memory or assumption, is the source of truth for what's actually built.
 
 ## Next Up
 
-- `08-mock-interviewer.md`
+- `09-server-actions-preps.md`
 
 ## Open Questions
 
@@ -165,6 +207,12 @@ memory or assumption, is the source of truth for what's actually built.
   (20/day), not a code issue. Re-run the comparison once the quota resets
   (next UTC day) and record the result here or in `19-manual-verification.md`
   before treating that verification item as closed.
+- `08-mock-interviewer.md`'s same-session shallow-vs-strong divergence check
+  (spec "Verify" section / `19-manual-verification.md` item 5) is only
+  half-done for the same reason — the strong-answer branch was verified live,
+  the shallow-answer branch in the same test session hit the same daily quota
+  cap. Re-run alongside the `07` re-run once the quota resets, before treating
+  that verification item as closed.
 - How should a brand-new visitor's session cookie actually get persisted,
   given a Server Component can't write cookies? Two reasonable options once
   `09-server-actions-preps.md` or `12-home-page-prep-list.md` is reached: (a)
