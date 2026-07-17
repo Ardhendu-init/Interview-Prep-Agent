@@ -5,7 +5,7 @@ memory or assumption, is the source of truth for what's actually built.
 
 ## Current Phase
 
-- `09-server-actions-preps.md` done. Next: `10-server-actions-interview.md`.
+- `10-server-actions-interview.md` done. Next: `11-design-system-setup.md`.
 
 ## Current Goal
 
@@ -229,6 +229,50 @@ memory or assumption, is the source of truth for what's actually built.
     below, not a defect in this step's wiring; the "never throws" contract
     held end to end under that real quota failure. `npx tsc --noEmit` and
     `npm run build` both pass.
+- `10-server-actions-interview.md` — `lib/db/turns.ts` (`listTurnsForPrep`,
+  `appendTurn`) and `app/actions.ts`'s `submitInterviewAnswer` written exactly
+  per spec. Added `candidateAnswerSchema` (`z.string().trim().min(1).max(5000)`)
+  to `lib/validation.ts` to validate the candidate's answer before persisting,
+  per code-standards.md's "every external input is validated with a Zod
+  schema" rule — this schema doesn't mirror a `lib/types.ts` interface (it's a
+  bare string parameter, not an object type), so the "types.ts/validation.ts
+  change together" protected-file rule doesn't apply here.
+  - Followed the same pattern already established by `09`'s
+    `updatePrepResearch`/`markPrepFailed` (which take only `prepId`, no
+    `sessionId`): `listTurnsForPrep`/`appendTurn` in `lib/db/turns.ts` take
+    only `prepId`, matching the feature-spec's exact signatures. Session
+    scoping is still fully enforced — `submitInterviewAnswer` calls
+    `getPrepById(sessionId, prepId)` first and returns the error case before
+    either turns function is ever reached, so there is no code path that
+    reaches another session's turns.
+  - Guarded against a `status === "ready"` row with a `null` guide (malformed
+    JSON degrading via `parseJsonField`, see `09`'s `toRecord`) by treating
+    that the same as "not ready" — `!prep.guide` is part of the same early
+    return as the status check, which also narrows the type so `prep.guide`
+    can be passed to `interviewTurn` without a null-check further down.
+  - Verified end to end against the real dev server and Supabase DB (temporary
+    `app/api/verify-tmp/route.ts`, removed after testing; all test rows
+    cleaned up in the same request): a `"researching"`-status prep and a
+    ready prep belonging to a *different* session both returned the identical
+    `{ error: "This prep isn't ready yet." }` — confirming a caller can't
+    distinguish "not found" from "not ready" from "not yours"; a ready prep
+    with empty history and `candidateAnswer: null` produced a real,
+    guide-grounded opening question from Gemini (correctly referencing the
+    Zerodha order-book concept seeded in the test guide); submitting a
+    candidate answer next correctly persisted the candidate turn before the
+    interviewer call — the interviewer call itself hit the same already-open
+    Gemini free-tier daily quota cap (`06`/`07`/`08` above) and fell through
+    to `FALLBACK_MESSAGE`, a live re-confirmation of the "never throws"
+    contract flowing correctly through this Server Action; a whitespace-only
+    answer was correctly rejected by `candidateAnswerSchema` with no turn
+    created; the final turn order read back from the database was
+    `interviewer, candidate, interviewer`, ascending by `createdAt`, proving
+    `listTurnsForPrep` reconstructs true persisted state rather than trusting
+    client-passed history (the spec's core "why" for this step). Did not
+    re-run the two-browser-tab manual check from the spec's "Verify" section
+    (requires a running UI, not yet built — `16-mock-interview-chat-ui.md`);
+    the database-level equivalent (re-fetching history mid-flow) was verified
+    instead. `npx tsc --noEmit` and `npm run build` both pass.
 
 ## In Progress
 
@@ -236,7 +280,7 @@ memory or assumption, is the source of truth for what's actually built.
 
 ## Next Up
 
-- `10-server-actions-interview.md`
+- `11-design-system-setup.md`
 
 ## Open Questions
 

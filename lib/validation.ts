@@ -35,3 +35,5 @@ export const researchFindingsSchema = z.object({
   cultureSignals: z.string(),
   sourcesUsed: z.array(z.string()),
 });
+
+export const candidateAnswerSchema = z.string().trim().min(1).max(5000);

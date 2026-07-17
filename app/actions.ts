@@ -8,10 +8,12 @@ import {
   updatePrepGuide,
   markPrepFailed,
 } from "../lib/db/preps";
-import { researchInputSchema } from "../lib/validation";
+import { listTurnsForPrep, appendTurn } from "../lib/db/turns";
+import { researchInputSchema, candidateAnswerSchema } from "../lib/validation";
 import { runResearch } from "../lib/ai/research-agent";
 import { generateGuide } from "../lib/ai/guide-generator";
-import type { ResearchInput } from "../lib/types";
+import { interviewTurn } from "../lib/ai/mock-interviewer";
+import type { ResearchInput, InterviewTurn } from "../lib/types";
 
 export async function createPrepAndRunAgent(
   rawInput: unknown,
@@ -53,4 +55,40 @@ export async function runResearchAndGuide(prepId: string): Promise<void> {
   } catch {
     await markPrepFailed(prepId);
   }
+}
+
+// Re-fetches turn history from the database (rather than trusting
+// client-passed history) so a stale or multi-tab client can never diverge
+// from the persisted state the model actually sees.
+export async function submitInterviewAnswer(
+  prepId: string,
+  candidateAnswer: string | null,
+): Promise<{ turn: InterviewTurn } | { error: string }> {
+  const { id: sessionId } = await getOrCreateSession();
+
+  const prep = await getPrepById(sessionId, prepId);
+  if (!prep || prep.status !== "ready" || !prep.guide) {
+    return { error: "This prep isn't ready yet." };
+  }
+
+  if (candidateAnswer !== null) {
+    const parsed = candidateAnswerSchema.safeParse(candidateAnswer);
+    if (!parsed.success) {
+      return { error: "Please provide an answer before submitting." };
+    }
+    await appendTurn(prepId, "candidate", parsed.data);
+  }
+
+  const history = await listTurnsForPrep(prepId);
+
+  const input: ResearchInput = {
+    company: prep.company,
+    role: prep.role,
+    jobDescription: prep.jobDescription ?? undefined,
+  };
+
+  const reply = await interviewTurn(input, prep.guide, history);
+  const turn = await appendTurn(prepId, "interviewer", reply);
+
+  return { turn };
 }
