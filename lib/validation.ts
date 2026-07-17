@@ -25,8 +25,8 @@ export const prepQuestionSchema = z.object({
 
 export const prepGuideSchema = z.object({
   summary: z.string().min(1),
-  concepts: z.array(prepConceptSchema).min(1).max(10),
-  questions: z.array(prepQuestionSchema).min(1).max(15),
+  concepts: z.array(prepConceptSchema).max(10),
+  questions: z.array(prepQuestionSchema).max(15),
 });
 
 export const researchFindingsSchema = z.object({

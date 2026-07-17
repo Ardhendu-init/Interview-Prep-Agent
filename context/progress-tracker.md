@@ -5,7 +5,7 @@ memory or assumption, is the source of truth for what's actually built.
 
 ## Current Phase
 
-- `06-research-agent.md` done. Next: `07-guide-generator.md`.
+- `07-guide-generator.md` done. Next: `08-mock-interviewer.md`.
 
 ## Current Goal
 
@@ -108,6 +108,45 @@ memory or assumption, is the source of truth for what's actually built.
     findings; a transient upstream 503 correctly falls through to
     `FALLBACK_FINDINGS` via the `catch` branch, confirming the "never throws"
     contract. `npx tsc --noEmit` and `npm run build` both pass.
+- `07-guide-generator.md` — `lib/ai/guide-generator.ts` written per spec:
+  `generateGuide(input, research)` makes a single
+  `genAI.models.generateContent` call with `responseMimeType:
+  "application/json"` and an explicit `maxOutputTokens: 8192`, strips
+  accidental code fences, `JSON.parse`s defensively, and validates against
+  `prepGuideSchema` before returning — falling back to the spec's fixed
+  `{ summary: "The guide could not be generated. Please try again.", concepts:
+  [], questions: [] }` object on any failure (API error, non-STOP finish,
+  parse failure, or schema failure). Never throws (top-level `try/catch`
+  around the API call, same pattern as `research-agent.ts`).
+  - **Deviation found and fixed in the same step:** the spec's fallback object
+    has empty `concepts`/`questions` arrays and must satisfy
+    `prepGuideSchema`, but the schema as written in
+    `04-shared-types-and-validation.md` had `.min(1)` on both arrays — so the
+    fallback would have failed its own validation. Fixed by changing both to
+    `.max(...)` only (no minimum), in `lib/validation.ts`, in this step. This
+    doesn't weaken validation on the success path — the system prompt still
+    requires 5-8 concepts / 6-10 questions, and a real successful generation
+    will always exceed the old minimums anyway.
+  - Verified end to end against the real Gemini API (temporary script, not
+    committed): a research-grounded company (Zerodha, Backend Engineer role)
+    produced 6 concepts and 8 questions, all `whyItMatters` text specific and
+    non-generic — explicitly referencing Zerodha's actual Go/NATS/Kafka stack,
+    sub-40ms latency requirements, and DSA-heavy interview rounds pulled from
+    the research findings, with real resource URLs (go.dev, Zerodha's own tech
+    blog, System Design Primer). This satisfies the spec's core quality bar
+    (item 3) and the `19-manual-verification.md` item-4 requirement that
+    `whyItMatters` be company-specific rather than templated.
+  - **Could not complete the planned two-company comparison** (item 4 also
+    asks for `whyItMatters` to differ between two different companies for the
+    same role): a second live call against Google hit the Gemini free-tier's
+    hard daily cap (`GenerateRequestsPerDayPerProjectPerModel-FreeTier`, limit
+    20 requests/day, HTTP 429) — quota exhausted for the day by testing done
+    across this step and `06-research-agent.md`, not a code defect. This
+    doubled as a valid real-world confirmation of the "never throws" contract:
+    the 429 correctly fell through the `catch` branch to `FALLBACK_GUIDE`
+    rather than crashing. Re-run the second-company comparison once the daily
+    quota resets, before treating `19-manual-verification.md` item 4 as fully
+    closed. `npx tsc --noEmit` and `npm run build` both pass.
 
 ## In Progress
 
@@ -115,10 +154,17 @@ memory or assumption, is the source of truth for what's actually built.
 
 ## Next Up
 
-- `07-guide-generator.md`
+- `08-mock-interviewer.md`
 
 ## Open Questions
 
+- `07-guide-generator.md`'s two-company `whyItMatters` comparison (spec
+  "Verify" section / `19-manual-verification.md` item 4) is only half-done —
+  one company (Zerodha) verified with strong, specific output; a second
+  company (Google) was blocked by the Gemini free-tier's daily request cap
+  (20/day), not a code issue. Re-run the comparison once the quota resets
+  (next UTC day) and record the result here or in `19-manual-verification.md`
+  before treating that verification item as closed.
 - How should a brand-new visitor's session cookie actually get persisted,
   given a Server Component can't write cookies? Two reasonable options once
   `09-server-actions-preps.md` or `12-home-page-prep-list.md` is reached: (a)

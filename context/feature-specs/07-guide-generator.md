@@ -54,4 +54,5 @@ Must instruct the model to:
 - See `19-manual-verification.md` test matrix, item 4: confirm `whyItMatters`
   text differs meaningfully between two different companies for the same role
 
-**Status: not started**
+**Status: done** — see `progress-tracker.md` for verification detail and the
+one open item (second-company comparison blocked by daily API quota).
