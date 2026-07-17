@@ -5,7 +5,7 @@ memory or assumption, is the source of truth for what's actually built.
 
 ## Current Phase
 
-- `04-shared-types-and-validation.md` done. Next: `05-ai-client-setup.md`.
+- `05-ai-client-setup.md` done. Next: `06-research-agent.md`.
 
 ## Current Goal
 
@@ -61,6 +61,12 @@ memory or assumption, is the source of truth for what's actually built.
   confirms every interface in `types.ts` (`ResearchInput`, `ResearchFindings`,
   `PrepConcept`, `PrepQuestion`, `PrepGuide`, `PrepStatus`, `InterviewTurn`)
   has a corresponding Zod schema in `validation.ts`.
+- `05-ai-client-setup.md` — `lib/ai/client.ts` written exactly per spec:
+  exports `genAI` (a `GoogleGenAI` instance) and the named `MODEL` constant
+  (`"gemini-2.5-flash"`). Installed `@google/genai` as a dependency (not
+  previously present). Verified: `grep -rn "process.env.GEMINI_API_KEY"`
+  across the repo returns exactly one hit, in this file; `npx tsc --noEmit`
+  passes.
 
 ## In Progress
 
@@ -68,7 +74,7 @@ memory or assumption, is the source of truth for what's actually built.
 
 ## Next Up
 
-- `05-ai-client-setup.md`
+- `06-research-agent.md`
 
 ## Open Questions
 
