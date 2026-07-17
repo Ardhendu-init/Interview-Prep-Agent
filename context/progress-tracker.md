@@ -5,7 +5,7 @@ memory or assumption, is the source of truth for what's actually built.
 
 ## Current Phase
 
-- `05-ai-client-setup.md` done. Next: `06-research-agent.md`.
+- `06-research-agent.md` done. Next: `07-guide-generator.md`.
 
 ## Current Goal
 
@@ -67,6 +67,47 @@ memory or assumption, is the source of truth for what's actually built.
   previously present). Verified: `grep -rn "process.env.GEMINI_API_KEY"`
   across the repo returns exactly one hit, in this file; `npx tsc --noEmit`
   passes.
+- `06-research-agent.md` — `lib/ai/research-agent.ts` written per spec:
+  `runResearch(input)` makes a single `genAI.models.generateContent` call with
+  `tools: [{ googleSearch: {} }]`, a labeled-format system prompt, treats
+  empty text or a non-`"STOP"` `finishReason` as failure, parses the four
+  labeled fields with a regex per label, and validates against
+  `researchFindingsSchema` before returning — falling back to the spec's
+  fixed "Research could not be completed..." object on any failure. Never
+  throws (top-level `try/catch` around the API call).
+  - **Prompt tuning found via live testing against the real Gemini API** (not
+    just type-checking — see `ai-workflow-rules.md`'s "verify end to end"
+    rule): an early version of the prompt, tested against a deliberately
+    fictional company name ("Qzyxlon Dynamics Pvt Ltd"), caused the model to
+    silently substitute a different, real, similarly-initialed company ("XL
+    Dynamics") and report on it as if it were the company asked about — a
+    worse failure mode than plain fabrication, since it's confidently wrong
+    about identity, not just thin on facts. Fixed by adding an explicit
+    identity-verification rule to the system prompt (verify search results
+    are about a company with the exact name given, not a similar-sounding
+    one) plus an explicit instruction that the honest "not found" case must
+    still use the four-label format (an early honest-degradation response
+    came back as free text with no labels at all, which would have parsed to
+    an all-empty-but-schema-valid object — a blank-looking guide — instead of
+    the intended fallback message). Re-tested after the fix: the fictional
+    company now correctly returns `"No company matching the exact name ...
+    could be found..."` in the `COMPANY_OVERVIEW` label with `"N/A"` in the
+    rest, which passes validation and reads correctly.
+  - Also found via live testing: the originally-planned `maxOutputTokens:
+    2048` caused legitimate, real companies (e.g. Zerodha) to occasionally
+    hit `finishReason: "MAX_TOKENS"` before finishing the labeled response,
+    because Gemini 2.5 Flash's internal "thinking" tokens count against the
+    same budget — this would have incorrectly triggered the fallback for a
+    normal company. Raised to `maxOutputTokens: 8192` (a large, high-source
+    company like Google used ~3100 tokens combined; 8192 leaves comfortable
+    headroom) and re-verified STOP/full output for Zerodha and Google.
+  - Verified end to end against the real Gemini API (temporary script, not
+    committed): a fictional company degrades honestly instead of fabricating
+    or misattributing; a mid-size real company (Zerodha) and a well-known
+    company (Google) both return specific, non-generic, schema-valid
+    findings; a transient upstream 503 correctly falls through to
+    `FALLBACK_FINDINGS` via the `catch` branch, confirming the "never throws"
+    contract. `npx tsc --noEmit` and `npm run build` both pass.
 
 ## In Progress
 
@@ -74,7 +115,7 @@ memory or assumption, is the source of truth for what's actually built.
 
 ## Next Up
 
-- `06-research-agent.md`
+- `07-guide-generator.md`
 
 ## Open Questions
 

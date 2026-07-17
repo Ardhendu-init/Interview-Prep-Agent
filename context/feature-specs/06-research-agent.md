@@ -66,4 +66,4 @@ Must instruct the model to:
 
 - See `19-manual-verification.md` test matrix, items 1-3
 
-**Status: not started**
+**Status: done**
