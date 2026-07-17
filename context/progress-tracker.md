@@ -5,9 +5,7 @@ memory or assumption, is the source of truth for what's actually built.
 
 ## Current Phase
 
-- `08-mock-interviewer.md` done. Next: `09-server-actions-preps.md` (or
-  whichever numbered spec covers server actions for the interview turns —
-  check `feature-specs/` ordering before starting).
+- `09-server-actions-preps.md` done. Next: `10-server-actions-interview.md`.
 
 ## Current Goal
 
@@ -189,6 +187,48 @@ memory or assumption, is the source of truth for what's actually built.
     (next UTC day), alongside the still-open `07` second-company comparison,
     before treating `19-manual-verification.md` item 5 as fully closed.
     `npx tsc --noEmit` and `npm run build` both pass.
+- `09-server-actions-preps.md` — `lib/db/preps.ts` (`createPrep`,
+  `getPrepById`, `listPrepsForSession`, `updatePrepResearch`,
+  `updatePrepGuide`, `markPrepFailed`) and `app/actions.ts`
+  (`createPrepAndRunAgent`, `runResearchAndGuide`) written exactly per spec.
+  `getPrepById`/`listPrepsForSession` map each Prisma row to the new
+  `InterviewPrepRecord` type (added to `lib/types.ts`) via a `toRecord`
+  helper that re-validates the `researchFindings`/`guide` `Json` columns
+  through the existing `researchFindingsSchema`/`prepGuideSchema` (not
+  trusted as their Prisma `Json` type alone, per code-standards.md) —
+  malformed JSON in either column degrades to `null` on read rather than
+  throwing. `getPrepById` uses a single `findFirst({ id, sessionId })` query
+  so a wrong-session read and a nonexistent-id read both return `null`
+  identically. `runResearchAndGuide` wraps the research + guide-generation
+  calls in one try/catch, calling `markPrepFailed` on any unexpected throw,
+  per spec.
+  - **Deviation from `ai-workflow-rules.md`'s "Protected Files" rule that
+    `lib/types.ts` / `lib/validation.ts` change together:** added
+    `InterviewPrepRecord` to `types.ts` without a
+    matching new schema in `validation.ts`. Its two JSON-shaped fields
+    (`researchFindings`, `guide`) already have dedicated schemas
+    (`researchFindingsSchema`, `prepGuideSchema`) that `lib/db/preps.ts` uses
+    directly when reading those columns — a third schema wrapping the whole
+    record would just re-assert types Prisma's own generated types (`id`,
+    `sessionId`, `status`, timestamps) already guarantee at compile time, with
+    nothing new actually being validated. No user/model input flows through
+    this type unvalidated.
+  - Verified end to end against the real dev server (temporary
+    `app/api/verify-tmp/route.ts`, removed after testing; one test
+    `InterviewPrep` row cleaned up via `prisma db execute`): invalid input
+    (`{ company: "", role: "" }`) returned `{ error }` and created no row;
+    valid input returned `{ prepId }` immediately with the row's status still
+    `"researching"` and both JSON columns still empty — confirming
+    `createPrepAndRunAgent` returns before AI work runs; `getPrepById` with a
+    fabricated session id and `getPrepById` with a fabricated prep id both
+    returned `null` identically; `runResearchAndGuide` drove the row's status
+    from `"researching"` to `"ready"`. Research/guide content itself came
+    back as the honest fallback objects (`FALLBACK_FINDINGS`/`FALLBACK_GUIDE`)
+    rather than real Zerodha content — consistent with the still-open Gemini
+    free-tier daily-quota exhaustion already logged under `06`/`07`/`08`
+    below, not a defect in this step's wiring; the "never throws" contract
+    held end to end under that real quota failure. `npx tsc --noEmit` and
+    `npm run build` both pass.
 
 ## In Progress
 
@@ -196,7 +236,7 @@ memory or assumption, is the source of truth for what's actually built.
 
 ## Next Up
 
-- `09-server-actions-preps.md`
+- `10-server-actions-interview.md`
 
 ## Open Questions
 

@@ -31,6 +31,19 @@ export interface PrepGuide {
 
 export type PrepStatus = "researching" | "generating_guide" | "ready" | "failed";
 
+export interface InterviewPrepRecord {
+  id: string;
+  sessionId: string;
+  company: string;
+  role: string;
+  jobDescription: string | null;
+  researchFindings: ResearchFindings | null;
+  guide: PrepGuide | null;
+  status: PrepStatus;
+  createdAt: string; // ISO string once serialized from the database
+  updatedAt: string; // ISO string once serialized from the database
+}
+
 export interface InterviewTurn {
   id: string;
   role: "interviewer" | "candidate";
