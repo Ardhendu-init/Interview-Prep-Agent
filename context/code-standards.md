@@ -92,7 +92,7 @@ app/
   layout.tsx                 — root layout
 lib/
   ai/
-    client.ts                  — shared Anthropic client + model constant
+    client.ts                  — shared Gemini client + model constant
     research-agent.ts            — research step
     guide-generator.ts             — guide generation step
     mock-interviewer.ts              — mock interview step

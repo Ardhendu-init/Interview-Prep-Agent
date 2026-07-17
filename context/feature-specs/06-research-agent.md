@@ -20,7 +20,7 @@ typed object.
 **System prompt — required content, not exact wording**
 
 Must instruct the model to:
-1. Use the `web_search_20250305` tool to gather: what the company does and its
+1. Use Google Search grounding to gather: what the company does and its
    size/stage, signals about their interview process (search review sites,
    forums, blog posts by past candidates), culture/comp signals if available
 2. Decide its own search queries based on what it learns — search again if
@@ -38,15 +38,21 @@ Must instruct the model to:
    SOURCES: <comma-separated URLs actually used>
    ```
 
-**Loop implementation**
+**Search implementation**
 
-- Bounded loop, `MAX_TURNS = 6` — call `anthropic.messages.create` with the
-  `web_search_20250305` tool available, append each response to message history,
-  continue while the model issues `tool_use` blocks, stop when it returns final
-  text with `stop_reason !== "tool_use"`
-- If `MAX_TURNS` is exhausted without a clean final-text response, treat it as a
-  failure and return the fallback object described above — do not attempt to
-  parse a partial/mid-search response as if it were final
+- Single call to `genAI.models.generateContent` with `config: { tools: [{
+  googleSearch: {} }] }`. Unlike a manual tool-call loop, Gemini's search
+  grounding is server-executed: the model issues as many internal search
+  queries as it needs and returns one final text response — there is no
+  `tool_use`/`tool_result` round trip to drive by hand
+- Treat the call as failed (return the fallback object below, do not attempt to
+  parse anything) if `response.text` is empty/undefined, or the first
+  candidate's `finishReason` is not `"STOP"` (e.g. `"SAFETY"`, `"MAX_TOKENS"`
+  with no usable text)
+- Grounding sources are available at
+  `response.candidates[0].groundingMetadata.groundingChunks[].web.uri` if
+  needed to cross-check the model's own `SOURCES:` line, but the parser below
+  reads `SOURCES:` from the text response, not from grounding metadata
 
 **Parsing**
 

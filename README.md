@@ -12,6 +12,6 @@ npm install
 npm run dev
 ```
 
-Requires `ANTHROPIC_API_KEY`, `DATABASE_URL`, and `DIRECT_URL` in `.env`
+Requires `GEMINI_API_KEY`, `DATABASE_URL`, and `DIRECT_URL` in `.env`
 (Supabase Postgres — pooled URL for `DATABASE_URL`, direct URL for
 `DIRECT_URL`, used by Prisma migrations).

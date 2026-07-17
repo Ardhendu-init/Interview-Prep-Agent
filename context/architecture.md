@@ -8,14 +8,14 @@
 | UI            | Tailwind CSS, utility classes only            | Styling — no component library, see ui-context.md               |
 | ORM             | Prisma 7                                        | Type-safe database access, migrations                           |
 | Database          | PostgreSQL via Supabase                           | Persistence — sessions, prep guides, interview turns             |
-| AI Provider          | Anthropic API (`@anthropic-ai/sdk`)                 | Research agent, guide generation, mock interviewer                |
+| AI Provider          | Google Gemini API (`@google/genai`)                 | Research agent, guide generation, mock interviewer                |
 | Validation              | Zod                                                   | Runtime validation at every system boundary — see code-standards |
 | Deployment                | Vercel                                                  | Hosting; connects to Supabase via `DATABASE_URL`                  |
 | Session identity             | Signed httpOnly cookie (no auth library)                  | Anonymous session scoping, not real authentication                 |
 
 ## System Boundaries
 
-- `app/` — routes, page composition, Server Actions. No direct Prisma or Anthropic
+- `app/` — routes, page composition, Server Actions. No direct Prisma or Gemini
   calls here — this layer calls into `lib/`.
 - `app/actions.ts` — the *only* bridge between client components and business logic
   in `lib/`. Every Server Action: (1) reads/validates session cookie, (2) validates
@@ -88,7 +88,7 @@
 
 ## Invariants
 
-1. The Anthropic API key and the database connection string are read only in
+1. The Gemini API key and the database connection string are read only in
    server-side code (`lib/ai/client.ts`, `lib/db/client.ts`), both executed only
    inside Server Actions or Server Components. Neither is ever sent to or
    readable by the client.
