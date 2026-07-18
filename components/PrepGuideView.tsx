@@ -1,9 +1,24 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { Download, AlertTriangle } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import type { InterviewPrepRecord, InterviewTurn, PrepStatus } from "../lib/types";
 import { runResearchAndGuide } from "../app/actions";
-import { MockInterviewChat } from "./MockInterviewChat";
+import { InterviewHeroCTA } from "./InterviewHeroCTA";
+import { InterviewPanel } from "./InterviewPanel";
+import { PrepBreadcrumb } from "./PrepBreadcrumb";
+import { Card } from "./ui/Card";
+import { Button } from "./ui/Button";
+import { Skeleton } from "./ui/Skeleton";
+import { useToast } from "./ui/Toast";
+import {
+  clampPanelWidth,
+  defaultPanelWidth,
+  getPanelOpen,
+  getPanelWidth,
+  setPanelOpen as persistPanelOpen,
+} from "../lib/panel-state";
 
 interface PrepGuideViewProps {
   initialPrep: InterviewPrepRecord;
@@ -84,6 +99,82 @@ export function PrepGuideView({ initialPrep, initialTurns }: PrepGuideViewProps)
   const [prep, setPrep] = useState(initialPrep);
   const [isPending, startTransition] = useTransition();
   const startedRef = useRef(false);
+  const { showToast } = useToast();
+
+  // Interview panel UI state — see 22-Interview-panel-redesign.md. Pure UI
+  // preference, mirrored to localStorage via lib/panel-state.ts; interview
+  // turn history itself still comes from the database via initialTurns.
+  const [panelOpen, setPanelOpenState] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
+  const [panelWidth, setPanelWidthState] = useState(480);
+  const [mobileTab, setMobileTab] = useState<"prep" | "interview">("prep");
+  const [isMobile, setIsMobile] = useState(false);
+  const [viewportWidth, setViewportWidth] = useState(1280);
+  const heroCtaRef = useRef<HTMLButtonElement>(null);
+  const wasPanelOpenRef = useRef(false);
+  const restoredPanelRef = useRef(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(mql.matches);
+    update();
+    mql.addEventListener("change", update);
+    return () => mql.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    function onResize() {
+      setViewportWidth(window.innerWidth);
+    }
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  useEffect(() => {
+    if (restoredPanelRef.current) {
+      return;
+    }
+    restoredPanelRef.current = true;
+    const storedWidth = getPanelWidth();
+    const width = storedWidth ?? defaultPanelWidth(window.innerWidth);
+    setPanelWidthState(clampPanelWidth(width, window.innerWidth));
+    // Never restore directly into focus mode — always land in expanded.
+    if (getPanelOpen()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- restoring localStorage UI state, unknowable at SSR time, same pattern as ThemeSwitcher.tsx
+      setPanelOpenState(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (wasPanelOpenRef.current && !panelOpen) {
+      heroCtaRef.current?.focus();
+    }
+    wasPanelOpenRef.current = panelOpen;
+  }, [panelOpen]);
+
+  function openPanel() {
+    if (isMobile) {
+      setMobileTab("interview");
+      return;
+    }
+    setPanelOpenState(true);
+    persistPanelOpen(true);
+  }
+
+  function closePanel() {
+    setPanelOpenState(false);
+    setFocusMode(false);
+    persistPanelOpen(false);
+  }
+
+  function enterFocusMode() {
+    setFocusMode(true);
+  }
+
+  function exitFocusMode() {
+    setFocusMode(false);
+  }
 
   useEffect(() => {
     if (prep.status === "researching" && !startedRef.current) {
@@ -128,30 +219,49 @@ export function PrepGuideView({ initialPrep, initialTurns }: PrepGuideViewProps)
     });
   }
 
+  function handleDownload() {
+    downloadMarkdown(prep);
+    showToast("Markdown exported", "success");
+  }
+
   if (prep.status === "failed") {
     return (
-      <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-6 flex flex-col gap-3">
-        <h1 className="text-2xl text-neutral-100">{prep.company}</h1>
-        <p className="text-sm text-red-400">
-          Something went wrong generating this prep guide.
-        </p>
-        <button
-          type="button"
-          onClick={handleRetry}
-          disabled={isPending}
-          className="self-start rounded-md bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:hover:bg-blue-600 text-neutral-100 text-sm px-4 py-2"
-        >
-          {isPending ? "Retrying…" : "Try again"}
-        </button>
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
+        <PrepBreadcrumb company={prep.company} />
+        <Card className="flex flex-col gap-3">
+          <h1 className="text-2xl font-semibold text-fg">{prep.company}</h1>
+          <p className="flex items-center gap-2 text-sm text-danger">
+            <AlertTriangle className="size-4 shrink-0" />
+            Something went wrong generating this prep guide.
+          </p>
+          <Button onClick={handleRetry} disabled={isPending} className="self-start">
+            {isPending ? "Retrying…" : "Try again"}
+          </Button>
+        </Card>
       </div>
     );
   }
 
   if (isInProgress(prep.status)) {
     return (
-      <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-6 flex flex-col gap-2">
-        <h1 className="text-2xl text-neutral-100">{prep.company}</h1>
-        <p className="text-sm text-neutral-300">{IN_PROGRESS_MESSAGE[prep.status]}</p>
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
+        <PrepBreadcrumb company={prep.company} />
+        <Card className="flex flex-col gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold text-fg">{prep.company}</h1>
+            <p className="text-sm text-fg-muted">{prep.role}</p>
+          </div>
+          <p className="text-sm text-fg-secondary">{IN_PROGRESS_MESSAGE[prep.status]}</p>
+          <div className="flex flex-col gap-3">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-5/6" />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-24 w-full" />
+            </div>
+          </div>
+        </Card>
       </div>
     );
   }
@@ -159,109 +269,192 @@ export function PrepGuideView({ initialPrep, initialTurns }: PrepGuideViewProps)
   const guide = prep.guide;
   if (!guide) {
     return (
-      <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-6 flex flex-col gap-3">
-        <h1 className="text-2xl text-neutral-100">{prep.company}</h1>
-        <p className="text-sm text-red-400">
-          Something went wrong generating this prep guide.
-        </p>
-        <button
-          type="button"
-          onClick={handleRetry}
-          disabled={isPending}
-          className="self-start rounded-md bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:hover:bg-blue-600 text-neutral-100 text-sm px-4 py-2"
-        >
-          {isPending ? "Retrying…" : "Try again"}
-        </button>
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
+        <PrepBreadcrumb company={prep.company} />
+        <Card className="flex flex-col gap-3">
+          <h1 className="text-2xl font-semibold text-fg">{prep.company}</h1>
+          <p className="flex items-center gap-2 text-sm text-danger">
+            <AlertTriangle className="size-4 shrink-0" />
+            Something went wrong generating this prep guide.
+          </p>
+          <Button onClick={handleRetry} disabled={isPending} className="self-start">
+            {isPending ? "Retrying…" : "Try again"}
+          </Button>
+        </Card>
       </div>
     );
   }
 
   const research = prep.researchFindings;
 
+  // Desktop-expanded only: push the centered prep column left of the fixed
+  // panel and cap its width so it never renders underneath it. Focus mode
+  // hides this column entirely, mobile uses the tab bar instead.
+  const contentStyle =
+    !isMobile && panelOpen && !focusMode
+      ? {
+          marginRight: panelWidth,
+          maxWidth: Math.max(280, Math.min(768, viewportWidth - 32 - panelWidth)),
+        }
+      : undefined;
+
+  const showPrepContent = isMobile ? mobileTab === "prep" : !focusMode;
+
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl text-neutral-100">{prep.company}</h1>
-          <p className="text-sm text-neutral-400">{prep.role}</p>
-        </div>
+    <>
+      {showPrepContent && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          style={contentStyle}
+          className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-20 md:pb-0"
+        >
+          <PrepBreadcrumb company={prep.company} />
+
+          <InterviewHeroCTA ref={heroCtaRef} guide={guide} turns={initialTurns} onOpen={openPanel} />
+
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight text-fg">{prep.company}</h1>
+              <p className="text-sm text-fg-muted">{prep.role}</p>
+            </div>
+            <Button variant="outline" onClick={handleDownload} className="shrink-0">
+              <Download className="size-4" />
+              <span className="hidden sm:inline">Download Markdown</span>
+            </Button>
+          </div>
+
+          <Card className="flex flex-col gap-4">
+            <h2 className="text-lg font-medium text-fg">Research Summary</h2>
+            <p className="text-sm text-fg-secondary">{guide.summary}</p>
+            {research && (
+              <div className="flex flex-col gap-3">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-fg-muted">
+                    Company overview
+                  </p>
+                  <p className="text-sm text-fg-secondary">{research.companyOverview}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-fg-muted">
+                    Interview process
+                  </p>
+                  <p className="text-sm text-fg-secondary">{research.interviewProcessNotes}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-fg-muted">
+                    Culture signals
+                  </p>
+                  <p className="text-sm text-fg-secondary">{research.cultureSignals}</p>
+                </div>
+              </div>
+            )}
+          </Card>
+
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-medium text-fg">Concepts to Review</h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {guide.concepts.map((concept, i) => (
+                <Card key={i} hover padding="md" className="flex flex-col gap-2">
+                  <p className="font-medium text-fg">{concept.topic}</p>
+                  <p className="text-sm text-fg-secondary">{concept.whyItMatters}</p>
+                  <div className="flex flex-col gap-1">
+                    {concept.resources.map((resource) => (
+                      <a
+                        key={resource.url}
+                        href={resource.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm text-accent hover:underline"
+                      >
+                        {resource.title}
+                      </a>
+                    ))}
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </section>
+
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-medium text-fg">Practice Questions</h2>
+            <div className="flex flex-col gap-3">
+              {guide.questions.map((question, i) => (
+                <Card key={i} hover padding="md" className="flex flex-col gap-2">
+                  <span className="self-start rounded-md bg-surface-hover px-2 py-1 text-xs font-medium uppercase tracking-wide text-fg-muted">
+                    {question.category}
+                  </span>
+                  <p className="text-fg">{question.question}</p>
+                  <p className="text-sm text-fg-muted">{question.hint}</p>
+                </Card>
+              ))}
+            </div>
+          </section>
+        </motion.div>
+      )}
+
+      <AnimatePresence>
+        {!isMobile && panelOpen && (
+          <InterviewPanel
+            key="desktop-interview-panel"
+            prepId={prep.id}
+            guide={guide}
+            turns={initialTurns}
+            mode={focusMode ? "focus" : "expanded"}
+            isMobile={false}
+            width={panelWidth}
+            onWidthChange={setPanelWidthState}
+            onExpandToFocus={enterFocusMode}
+            onBack={exitFocusMode}
+            onClose={closePanel}
+          />
+        )}
+        {isMobile && mobileTab === "interview" && (
+          <InterviewPanel
+            key="mobile-interview-panel"
+            prepId={prep.id}
+            guide={guide}
+            turns={initialTurns}
+            mode="focus"
+            isMobile
+            width={panelWidth}
+            onWidthChange={setPanelWidthState}
+            onExpandToFocus={() => {}}
+            onBack={() => setMobileTab("prep")}
+            onClose={() => setMobileTab("prep")}
+          />
+        )}
+      </AnimatePresence>
+
+      <div
+        role="tablist"
+        aria-label="Prep sections"
+        className="fixed inset-x-0 bottom-0 z-50 flex border-t border-border bg-surface md:hidden"
+      >
         <button
           type="button"
-          onClick={() => downloadMarkdown(prep)}
-          className="shrink-0 rounded-md border border-neutral-700 text-neutral-100 text-sm px-4 py-2 hover:border-neutral-600"
+          role="tab"
+          aria-selected={mobileTab === "prep"}
+          onClick={() => setMobileTab("prep")}
+          className={`flex-1 py-3 text-center text-sm font-medium transition-colors ${
+            mobileTab === "prep" ? "text-accent" : "text-fg-muted"
+          }`}
         >
-          Download Markdown
+          Preparation
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mobileTab === "interview"}
+          onClick={() => setMobileTab("interview")}
+          className={`flex-1 py-3 text-center text-sm font-medium transition-colors ${
+            mobileTab === "interview" ? "text-accent" : "text-fg-muted"
+          }`}
+        >
+          Interview
         </button>
       </div>
-
-      <section className="rounded-lg border border-neutral-800 bg-neutral-900 p-6 flex flex-col gap-4">
-        <h2 className="text-lg text-neutral-100">Research Summary</h2>
-        <p className="text-sm text-neutral-300">{guide.summary}</p>
-        {research && (
-          <div className="flex flex-col gap-3">
-            <div>
-              <p className="text-xs uppercase text-neutral-500">Company overview</p>
-              <p className="text-sm text-neutral-300">{research.companyOverview}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-neutral-500">Interview process</p>
-              <p className="text-sm text-neutral-300">{research.interviewProcessNotes}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-neutral-500">Culture signals</p>
-              <p className="text-sm text-neutral-300">{research.cultureSignals}</p>
-            </div>
-          </div>
-        )}
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg text-neutral-100">Concepts to Review</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {guide.concepts.map((concept, i) => (
-            <div
-              key={i}
-              className="rounded-lg border border-neutral-800 bg-neutral-900 p-4 flex flex-col gap-2"
-            >
-              <p className="text-neutral-100">{concept.topic}</p>
-              <p className="text-sm text-neutral-300">{concept.whyItMatters}</p>
-              <div className="flex flex-col gap-1">
-                {concept.resources.map((resource) => (
-                  <a
-                    key={resource.url}
-                    href={resource.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-sm text-blue-400 hover:underline"
-                  >
-                    {resource.title}
-                  </a>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg text-neutral-100">Practice Questions</h2>
-        <div className="flex flex-col gap-3">
-          {guide.questions.map((question, i) => (
-            <div
-              key={i}
-              className="rounded-lg border border-neutral-800 bg-neutral-900 p-4 flex flex-col gap-2"
-            >
-              <span className="self-start rounded-md bg-neutral-800 text-xs uppercase text-neutral-400 px-2 py-1">
-                {question.category}
-              </span>
-              <p className="text-neutral-100">{question.question}</p>
-              <p className="text-sm text-neutral-400">{question.hint}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <MockInterviewChat prepId={prep.id} guide={guide} initialTurns={initialTurns} />
-    </div>
+    </>
   );
 }

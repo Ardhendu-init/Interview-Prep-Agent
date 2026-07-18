@@ -1,1 +1,125 @@
 @import "tailwindcss";
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-border: var(--border);
+  --color-fg: var(--fg);
+  --color-fg-secondary: var(--fg-secondary);
+  --color-fg-muted: var(--fg-muted);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-fg: var(--accent-fg);
+  --color-danger: var(--danger);
+  --color-danger-fg: var(--danger-fg);
+  --color-success: var(--success);
+}
+
+/* Dark (default) — deep slate, per ui-context.md */
+:root,
+[data-theme="dark"] {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --surface-hover: #263349;
+  --border: #334155;
+  --fg: #f1f5f9;
+  --fg-secondary: #cbd5e1;
+  --fg-muted: #94a3b8;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --accent-fg: #ffffff;
+  --danger: #f87171;
+  --danger-fg: #ffffff;
+  --success: #4ade80;
+}
+
+/* Midnight — blue-black */
+[data-theme="midnight"] {
+  --bg: #020617;
+  --surface: #0f172a;
+  --surface-hover: #16213a;
+  --border: #1e293b;
+  --fg: #f1f5f9;
+  --fg-secondary: #cbd5e1;
+  --fg-muted: #94a3b8;
+  --accent: #3b82f6;
+  --accent-hover: #60a5fa;
+  --accent-fg: #ffffff;
+  --danger: #f87171;
+  --danger-fg: #ffffff;
+  --success: #4ade80;
+}
+
+/* Graphite — premium gray/black, green accent */
+[data-theme="graphite"] {
+  --bg: #111111;
+  --surface: #1c1c1c;
+  --surface-hover: #262626;
+  --border: #2e2e2e;
+  --fg: #f8fafc;
+  --fg-secondary: #d4d4d8;
+  --fg-muted: #a1a1aa;
+  --accent: #22c55e;
+  --accent-hover: #4ade80;
+  --accent-fg: #052e12;
+  --danger: #f87171;
+  --danger-fg: #052e12;
+  --success: #4ade80;
+}
+
+/* Light — clean, minimal, high readability */
+[data-theme="light"] {
+  --bg: #ffffff;
+  --surface: #f8fafc;
+  --surface-hover: #f1f5f9;
+  --border: #e2e8f0;
+  --fg: #0f172a;
+  --fg-secondary: #334155;
+  --fg-muted: #64748b;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-fg: #ffffff;
+  --danger: #dc2626;
+  --danger-fg: #ffffff;
+  --success: #16a34a;
+}
+
+html {
+  color-scheme: dark;
+}
+html[data-theme="light"] {
+  color-scheme: light;
+}
+
+@keyframes typing-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+.animate-typing-dot {
+  animation: typing-dot 1.2s ease-in-out infinite;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.35s ease-out both;
+}

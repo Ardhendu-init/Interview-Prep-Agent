@@ -5,7 +5,9 @@ memory or assumption, is the source of truth for what's actually built.
 
 ## Current Phase
 
-- `17-error-and-loading-states.md` done. Next: `18-deployment-and-infra.md`.
+- `18-uiux-enhancement.md` done, **except section 2 (Voice Interview
+  Support)** — explicitly deferred to a later session per direct instruction;
+  not started, not stubbed. Next: `19-deployment-and-infra.md`.
 
 ## Current Goal
 
@@ -462,16 +464,178 @@ memory or assumption, is the source of truth for what's actually built.
     for input) and the file wasn't otherwise in scope for this step; flagging
     here in case it's worth a follow-up UX polish later.
 
+- `18-uiux-enhancement.md` — full professional redesign implemented, sections
+  1, 3, 4, 5, 6 (section 2, Voice Interview Support, explicitly out of scope
+  for this step — see Open Questions).
+  - **Theme system (section 4):** added `lib/theme.ts` (theme list/type,
+    `localStorage` key, `THEME_INIT_SCRIPT`) and rewrote `app/globals.css`
+    with per-theme CSS custom properties (`dark`/`midnight`/`graphite`/`light`)
+    mapped into Tailwind v4 color utilities via a top-level `@theme inline`
+    block — this is what makes `bg-surface`/`text-fg`/etc. repaint instantly
+    on `data-theme` change with no rebuild and no React re-render of color
+    values. `components/ThemeSwitcher.tsx` (in the new navbar) reads/writes
+    `localStorage` and sets `data-theme`; a blocking inline `<script>` in
+    `app/layout.tsx`'s `<head>` applies the stored theme before first paint to
+    avoid a flash of the wrong theme. **This supersedes `ui-context.md`'s
+    original "dark only, no light mode" decision and its "Tailwind's built-in
+    neutral/blue scales... rather than introducing custom CSS variables"
+    decision** — both rewritten in `ui-context.md` in this step, since the
+    spec explicitly requires 4 switchable themes including a light theme.
+  - **New shared primitives (section 5):** `components/ui/Button.tsx` (5
+    variants), `Card.tsx`, `Field.tsx` (`Input`/`Textarea`/`Label`),
+    `Skeleton.tsx`, `EmptyState.tsx`, `Toast.tsx` (`ToastProvider` +
+    `useToast()`). Added `framer-motion` (page transitions, chat bubble/typing
+    indicator animation, toast enter/exit, theme-dropdown, progress-bar width)
+    and `lucide-react` (navbar/breadcrumb/chat icons) as new dependencies —
+    both anticipated by `ui-context.md`'s pre-`18` text ("if icons are needed
+    later, use lucide-react") or explicitly suggested by the spec itself
+    (Framer Motion). Did not add a full component library (shadcn/ui etc.) —
+    the spec doesn't require one and `ui-context.md`'s "intentionally small"
+    reasoning still holds for a project this size; a handful of primitives
+    was enough.
+  - **Navigation (section 3):** `components/Navbar.tsx` (sticky, logo, theme
+    switcher, decorative session badge — no real avatar/profile menu since
+    there's no account system per `project-overview.md`) and
+    `components/PrepBreadcrumb.tsx` (back-to-home link + `Home → {Company}
+    Interview` breadcrumb on `/prep/[id]`) — two levels, not three, since
+    there's no separate "Companies" listing page in this app's architecture.
+  - **Chat redesign (section 1):** `components/MockInterviewChat.tsx` rewritten
+    as alternating bubbles (interviewer left/`bg-surface-hover`, candidate
+    right/`bg-accent`), per-message timestamp caption, auto-scroll-to-latest
+    via a bottom sentinel ref, a typing-indicator bubble (3 animated dots)
+    while the interviewer's turn is generating, a multi-line `Textarea` (Enter
+    sends, Shift+Enter inserts a newline — `onKeyDown` only intercepts plain
+    Enter), and a slim progress bar (question count vs. `guide.questions.length`,
+    a live `mm:ss` elapsed timer started from the first turn's `createdAt`,
+    completion %). Existing optimistic-turn/error/retry behavior from
+    `16`/`17` preserved as-is, now also routed through `useToast()` for error
+    surfacing in addition to the existing inline red text.
+  - **UX enhancements (section 6):** `components/ui/Toast.tsx` wired into
+    `NewPrepForm`/`PrepGuideView`/`MockInterviewChat` for success/error
+    surfacing alongside (not replacing) existing inline error text;
+    `components/PageTransition.tsx` (mounted once in `app/layout.tsx`, keyed
+    on `usePathname()`) for page-level fade-in. Keyboard shortcuts scoped to
+    what the spec's chat section asked for (Enter/Shift+Enter) rather than
+    inventing app-wide shortcuts not described anywhere in `context/`.
+  - **Deviation found via live testing, fixed in this step:** the no-flash
+    `THEME_INIT_SCRIPT` (see Theme system above) sets `data-theme` on
+    `<html>` before React hydrates, but the server-rendered markup has no
+    such attribute — React 19 flagged this as a hydration mismatch on
+    `<html>` (visible in the dev overlay: "server rendered HTML didn't match
+    the client properties... `data-theme="midnight"`"). This is the same
+    known tradeoff every no-flash theme script has (e.g. `next-themes`).
+    Fixed by adding `suppressHydrationWarning` to the `<html>` element in
+    `app/layout.tsx` — this only silences the warning for that element's own
+    attributes, not its children, so it doesn't mask unrelated hydration bugs
+    elsewhere in the tree.
+  - Two React-hooks lint errors surfaced by `npm run lint`
+    (`react-hooks/set-state-in-effect`) in `ThemeSwitcher.tsx` (syncing React
+    state from a `data-theme` attribute the pre-hydration script already set —
+    unknowable at SSR time) and `MockInterviewChat.tsx` (initializing the
+    live elapsed-time clock before the `setInterval` takes over) — both are
+    genuine external-system synchronization, not derivable state, so both
+    have a targeted `eslint-disable-next-line` with an inline comment
+    explaining why, rather than a blanket disable.
+  - Updated `ui-context.md` (Theme, Colors, Typography, Border Radius,
+    Component Library, Layout Patterns, Icons sections all revised) and
+    `code-standards.md` (File Organization, Styling sections) in this same
+    step, per `ai-workflow-rules.md`'s "Keeping Docs in Sync" rule.
+  - Verified: `npx tsc --noEmit`, `npm run build`, and `npm run lint` all pass
+    clean. Browser-driven visual verification (all 4 themes, full mock
+    interview chat flow, responsive breakpoints) was not completed in this
+    step — the user declined the browser-automation tool this step attempted
+    to use for that check. **Flagging explicitly, not claiming full UI
+    verification**: someone should open the app in a real browser before
+    treating this step as fully done, per `ai-workflow-rules.md`'s "verified
+    end to end, not just compiles/type-checks" bar.
+
+- `22-Interview-panel-redesign.md` — implemented ahead of the main
+  `01`→`19` sequence per direct instruction (a UI-only redesign, no
+  `lib/ai/`/`lib/db/`/`app/actions.ts` diff). New files: `lib/panel-state.ts`
+  (localStorage open/width helpers), `components/InterviewHeroCTA.tsx`,
+  `components/InterviewPanel.tsx` (resizable side panel / full-viewport focus
+  mode / mobile full-view host, focus trap, Escape handling, drag + arrow-key
+  resize). Modified: `components/PrepGuideView.tsx` (now the sole owner of
+  panel-open/focus-mode/mobile-tab state — see below), `components/
+  MockInterviewChat.tsx` (`aria-live="polite"` on the messages container,
+  reserved empty mic-icon slot — no prop/behavior change),
+  `app/prep/[id]/page.tsx` (dropped its own `max-w-3xl mx-auto`, now a plain
+  full-width relative container so the fixed panel's math has the true
+  viewport to work against).
+  - **Resolved ambiguities, edited in the same step (per
+    `ai-workflow-rules.md`):** this spec predated `18-uiux-enhancement.md`'s
+    semantic-token/emoji-free-icon system — every raw `bg-neutral-900`/
+    `bg-blue-600`/emoji in the original draft was replaced with its semantic-
+    token/`lucide-react` equivalent (`bg-surface`, `border-border`, `Rocket`/
+    `Bot` icons, a `bg-success` dot for the 🟢 indicator). Added
+    `components/PrepGuideView.tsx` to Modified Files (the original draft
+    didn't name it) since it's the only existing component that could own the
+    new `localStorage`-backed UI state — `page.tsx` is a Server Component and
+    can't. The Hero CTA's and panel header's "Question n of total" both read
+    from the `initialTurns` snapshot (same one `MockInterviewChat` starts
+    from) rather than a live subscription into `MockInterviewChat`'s internal
+    state — lifting that state would have required changing
+    `MockInterviewChat`'s props, which the spec explicitly prohibited.
+  - **Bug found and fixed during browser verification, not just type-check:**
+    the mobile "Interview" tab initially rendered `InterviewPanel` in normal
+    document flow (not `fixed`), so it appeared *below* the still-mounted
+    breadcrumb instead of replacing it, and `PrepBreadcrumb` (rendered
+    directly by `page.tsx`, outside `PrepGuideView`'s mobile-tab-aware
+    content) stayed mounted and in the tab order behind it — violating the
+    "hidden entirely, out of tab order" rule mobile inherits from desktop
+    focus mode. Fixed by (1) making the mobile panel `fixed inset-x-0 top-14
+    bottom-14` (bounded by the navbar height and the tab bar height) instead
+    of flowing normally, and (2) moving `PrepBreadcrumb` ownership from
+    `page.tsx` into `PrepGuideView` itself (rendered in every status branch,
+    gated by the same `showPrepContent` flag as the rest of the prep column
+    in the ready branch) — confirmed via Playwright that `text=Back to Home`
+    has zero matches while the mobile Interview tab is active and reappears
+    on switching back.
+  - Verified end to end against the real dev server and a real seeded ready
+    prep (Deloitte/Frontend React Developer, 8-question guide, 6 turns
+    already recorded) via a temporary standalone Playwright install in the
+    scratchpad directory (same pattern as `17`'s verification), driving a
+    real headless Chromium — not just `tsc`/`build`:
+    1. Hero CTA → expanded panel: prep content (including Research Summary)
+       stayed visible and unobstructed to its left, confirmed by bounding-box
+       math (no overlap at 1280px viewport with the default 34vw width).
+    2. Expand-to-focus: `Research Summary`'s DOM node count dropped to 0
+       (actually unmounted, not just hidden) while focus mode was active;
+       `Escape` returned to expanded and the node reappeared.
+    3. Keyboard resize (arrow keys on the `role="separator"` handle, the
+       accessible equivalent of drag) moved the panel from its default
+       ~435px to exactly 467px (two 16px steps); confirmed the value survived
+       a full page reload and restored into **expanded**, never focus mode.
+    4. Panel open moved focus to the in-progress interview's answer
+       `<textarea>` (confirmed via `document.activeElement.tagName`); closing
+       the panel returned focus to the Hero CTA button (confirmed via its
+       text content).
+    5. At a 375px mobile viewport: the bottom `Preparation`/`Interview` tab
+       bar appeared, no split/side-panel layout ever rendered, and the
+       resize-handle `role="separator"` element count was 0 (mobile never
+       renders it).
+    6. Zero browser console errors across the whole flow.
+    - **Not separately verified:** a real assistive-technology screen reader
+      reading the `aria-live="polite"` announcement out loud (spec item 4) —
+      the DOM attribute is in place and Playwright confirmed the messages
+      container carries it, but no screen-reader-specific tooling was run
+      against it this step.
+  - `npx tsc --noEmit`, `npm run lint`, and `npm run build` all pass clean.
+
 ## In Progress
 
 - None.
 
 ## Next Up
 
-- `18-deployment-and-infra.md`
+- `19-deployment-and-infra.md`
 
 ## Open Questions
 
+- `18-uiux-enhancement.md` section 2 (Voice Interview Support — Web Speech
+  API mic input, optional TTS readback) was explicitly deferred by the user to
+  a later session and is entirely unimplemented — no stub, no placeholder UI.
+  Pick this up as its own step before treating `18` as fully closed.
 - `07-guide-generator.md`'s two-company `whyItMatters` comparison (spec
   "Verify" section / `19-manual-verification.md` item 4) is only half-done —
   one company (Zerodha) verified with strong, specific output; a second

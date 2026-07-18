@@ -97,6 +97,13 @@
 - Tailwind utility classes only — no separate CSS files beyond `globals.css`
 - Follow the palette, spacing, and radius scale defined in `ui-context.md` — no
   arbitrary hex values or magic numbers in `className` strings
+- Since `18-uiux-enhancement.md`: use the semantic color tokens (`bg-surface`,
+  `text-fg`, `border-border`, etc., see `ui-context.md`'s Colors table), never
+  raw Tailwind palette classes (`bg-neutral-900`, `text-blue-400`) — raw
+  palette classes don't repaint when the active theme changes
+- Prefer the shared primitives in `components/ui/` (`Button`, `Card`, `Input`/
+  `Textarea`, `Skeleton`, `EmptyState`, `Toast`) over hand-rolled markup for
+  anything they already cover
 
 ## File Organization
 
@@ -123,10 +130,25 @@ lib/
   types.ts                                       — shared TS interfaces
   validation.ts                                   — Zod schemas mirroring types.ts
   format.ts                                        — display-formatting helpers (e.g. relative dates)
+  theme.ts                                          — theme list/type, localStorage key, no-flash init script (see ui-context.md)
+  panel-state.ts                                     — interview panel UI-state localStorage helpers (open/width), see 22-Interview-panel-redesign.md
 components/
+  ui/
+    Button.tsx                                          — button variants (primary/secondary/outline/ghost/danger)
+    Card.tsx                                              — card surface, optional hover elevation
+    Field.tsx                                              — Input/Textarea/Label with shared focus-ring styling
+    Skeleton.tsx                                            — pulsing loading placeholder
+    EmptyState.tsx                                           — icon + title + description + action
+    Toast.tsx                                                 — ToastProvider + useToast()
+  Navbar.tsx                                              — sticky header: logo, theme switcher, session badge
+  ThemeSwitcher.tsx                                         — theme dropdown, writes data-theme + localStorage
+  PageTransition.tsx                                         — page-level fade-in wrapper (mounted in layout.tsx)
+  PrepBreadcrumb.tsx                                         — back link + Home → Company breadcrumb on /prep/[id]
   PrepList.tsx                                      — home page list
   NewPrepForm.tsx                                      — company/role input form
-  PrepGuideView.tsx                                      — guide display + export
+  PrepGuideView.tsx                                      — guide display + export + interview panel orchestration (open/focus/mobile-tab state)
+  InterviewHeroCTA.tsx                                     — top-of-page entry point that opens the interview panel
+  InterviewPanel.tsx                                        — resizable side panel / focus mode / mobile full-view host for MockInterviewChat
   MockInterviewChat.tsx                                    — chat UI
 prisma/
   schema.prisma                                              — database schema
