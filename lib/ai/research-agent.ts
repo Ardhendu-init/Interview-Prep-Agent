@@ -84,18 +84,24 @@ export async function runResearch(input: ResearchInput): Promise<ResearchFinding
         maxOutputTokens: 8192,
       },
     });
-  } catch {
+  } catch (error) {
+    console.error("[research-agent] runResearch failed:", error);
     return { ...FALLBACK_FINDINGS };
   }
 
   const finishReason = response.candidates?.[0]?.finishReason;
   const text = response.text;
   if (!text || finishReason !== "STOP") {
+    console.error("[research-agent] runResearch got a non-STOP or empty response:", {
+      finishReason,
+      text,
+    });
     return { ...FALLBACK_FINDINGS };
   }
 
   const result = researchFindingsSchema.safeParse(parseFindings(text));
   if (!result.success) {
+    console.error("[research-agent] runResearch got a response that failed validation:", result.error);
     return { ...FALLBACK_FINDINGS };
   }
 

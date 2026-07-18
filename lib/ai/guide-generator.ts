@@ -69,23 +69,30 @@ export async function generateGuide(
         maxOutputTokens: 8192,
       },
     });
-  } catch {
+  } catch (error) {
+    console.error("[guide-generator] generateGuide failed:", error);
     return { ...FALLBACK_GUIDE };
   }
 
   const finishReason = response.candidates?.[0]?.finishReason;
   const text = response.text;
   if (!text || finishReason !== "STOP") {
+    console.error("[guide-generator] generateGuide got a non-STOP or empty response:", {
+      finishReason,
+      text,
+    });
     return { ...FALLBACK_GUIDE };
   }
 
   const parsed = parseGuide(text);
   if (parsed === null) {
+    console.error("[guide-generator] generateGuide got a response that failed JSON parsing:", text);
     return { ...FALLBACK_GUIDE };
   }
 
   const result = prepGuideSchema.safeParse(parsed);
   if (!result.success) {
+    console.error("[guide-generator] generateGuide got a response that failed validation:", result.error);
     return { ...FALLBACK_GUIDE };
   }
 

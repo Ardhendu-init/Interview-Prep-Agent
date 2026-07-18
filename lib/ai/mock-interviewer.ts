@@ -62,13 +62,18 @@ export async function interviewTurn(
         maxOutputTokens: 1024,
       },
     });
-  } catch {
+  } catch (error) {
+    console.error("[mock-interviewer] interviewTurn failed:", error);
     return FALLBACK_MESSAGE;
   }
 
   const finishReason = response.candidates?.[0]?.finishReason;
   const text = response.text;
   if (!text || finishReason !== "STOP") {
+    console.error(
+      "[mock-interviewer] interviewTurn got a non-STOP or empty response:",
+      { finishReason, text },
+    );
     return FALLBACK_MESSAGE;
   }
 
