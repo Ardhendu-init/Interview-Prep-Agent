@@ -1,4 +1,4 @@
-import { genAI, MODEL } from "./client";
+import { generateContent } from "./client";
 import { researchFindingsSchema } from "../validation";
 import type { ResearchInput, ResearchFindings } from "../types";
 
@@ -75,8 +75,7 @@ function buildUserPrompt(input: ResearchInput): string {
 export async function runResearch(input: ResearchInput): Promise<ResearchFindings> {
   let response;
   try {
-    response = await genAI.models.generateContent({
-      model: MODEL,
+    response = await generateContent({
       contents: buildUserPrompt(input),
       config: {
         systemInstruction: SYSTEM_PROMPT,

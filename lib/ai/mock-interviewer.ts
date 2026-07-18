@@ -1,4 +1,4 @@
-import { genAI, MODEL } from "./client";
+import { generateContent } from "./client";
 import type { ResearchInput, PrepGuide, InterviewTurn } from "../types";
 
 const SYSTEM_PROMPT = `You are role-playing as a live interviewer conducting a mock interview for a specific candidate. You will be given the company/role being interviewed for, and a prep guide (a concept list and a question bank) grounded in research about that company and role — use it as your source of material, but you are not limited to reading questions verbatim from it.
@@ -54,8 +54,7 @@ export async function interviewTurn(
 
   let response;
   try {
-    response = await genAI.models.generateContent({
-      model: MODEL,
+    response = await generateContent({
       contents,
       config: {
         systemInstruction: buildSystemInstruction(input, guide),
