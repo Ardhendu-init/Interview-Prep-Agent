@@ -60,9 +60,13 @@ memory or assumption, is the source of truth for what's actually built.
 - `04-shared-types-and-validation.md` — `lib/types.ts` and `lib/validation.ts`
   written exactly per spec (`zod` `^4.4.3` was already a dependency, no install
   needed). Verified: `npx tsc --noEmit` passes; manual side-by-side check
-  confirms every interface in `types.ts` (`ResearchInput`, `ResearchFindings`,
-  `PrepConcept`, `PrepQuestion`, `PrepGuide`, `PrepStatus`, `InterviewTurn`)
-  has a corresponding Zod schema in `validation.ts`.
+  confirms `ResearchInput`, `ResearchFindings`, `PrepConcept`, `PrepQuestion`,
+  `PrepGuide`, `PrepStatus`, and `InterviewTurn` in `types.ts` have a
+  corresponding Zod schema in `validation.ts`. `InterviewPrepRecord`
+  intentionally has no schema of its own — it's a DB-shaped composite of
+  already-validated pieces (`ResearchFindings`, `PrepGuide`, `PrepStatus`)
+  plus DB-generated fields (`id`, `createdAt`, `updatedAt`), not a value that
+  itself needs runtime validation.
 - `05-ai-client-setup.md` — `lib/ai/client.ts` written exactly per spec:
   exports `genAI` (a `GoogleGenAI` instance) and the named `MODEL` constant
   (`"gemini-2.5-flash"`). Installed `@google/genai` as a dependency (not
@@ -932,6 +936,29 @@ memory or assumption, is the source of truth for what's actually built.
   `InterviewPanel.tsx`'s pattern, and verify with a real (or
   element-cropped-and-actually-viewed) screenshot, not just a DOM
   attribute/class-name check.
+
+- **Race condition found via code review, not a feature-spec step**:
+  `runResearchAndGuide` (`app/actions.ts`) had no server-side guard against
+  running twice for the same prep — a remounted `PrepGuideView` effect
+  racing a manual retry click (or two tabs open on the same prep) could both
+  reach the function while `status` was still `"researching"`/`"failed"`
+  and both call Gemini concurrently. Fixed with an atomic claim: added a
+  nullable `claimedAt` column to `InterviewPrep`
+  (`prisma/migrations/20260718160121_add_prep_claimed_at`) and
+  `claimPrepForResearch` in `lib/db/preps.ts`, which does a single
+  `updateMany({ where: { id, claimedAt: null }, data: { status:
+  "researching", claimedAt: now() } })` — only the caller that actually
+  flips `claimedAt` from `null` proceeds; everyone else returns immediately.
+  `updatePrepGuide`/`markPrepFailed` clear `claimedAt` back to `null` on the
+  terminal writes so a later retry can re-claim. `status` alone couldn't
+  serve as this gate because it stays `"researching"` for the entire
+  in-flight duration, not just at the start. Verified with a standalone
+  script hitting the real Supabase dev DB: three concurrent claim attempts
+  on the same row produced exactly one winner, and a claim after
+  `markPrepFailed` (simulating retry) succeeded. `npx tsc --noEmit` and
+  `npm run build` both pass. Left `PrepGuideView.tsx`'s client-side
+  `startedRef`/optimistic retry state as-is — it's now just a UI nicety, not
+  the correctness boundary.
 
 ## Session Notes
 

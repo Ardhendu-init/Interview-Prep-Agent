@@ -4,7 +4,7 @@
 
 | Layer       | Technology                                | Role                                                        |
 | ----------- | ------------------------------------------ | ------------------------------------------------------------- |
-| Framework    | Next.js 15 (App Router) + TypeScript        | Single deployable unit — frontend + backend in one app         |
+| Framework    | Next.js 16 (App Router) + TypeScript        | Single deployable unit — frontend + backend in one app         |
 | UI            | Tailwind CSS, utility classes only            | Styling — no component library, see ui-context.md               |
 | ORM             | Prisma 7                                        | Type-safe database access, migrations                           |
 | Database          | PostgreSQL via Supabase                           | Persistence — sessions, prep guides, interview turns             |

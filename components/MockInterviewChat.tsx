@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition, type Dispatch, type SetStateAction } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { MessageCircle, Mic, MicOff, Send, Volume2, VolumeX } from "lucide-react";
 import type { InterviewTurn } from "../lib/types";
@@ -17,7 +17,8 @@ import { getTtsEnabled, setTtsEnabled as persistTtsEnabled } from "../lib/tts-pr
 
 interface MockInterviewChatProps {
   prepId: string;
-  initialTurns: InterviewTurn[];
+  turns: InterviewTurn[];
+  onTurnsChange: Dispatch<SetStateAction<InterviewTurn[]>>;
 }
 
 function formatTimestamp(iso: string): string {
@@ -38,8 +39,7 @@ function TypingIndicator() {
   );
 }
 
-export function MockInterviewChat({ prepId, initialTurns }: MockInterviewChatProps) {
-  const [turns, setTurns] = useState(initialTurns);
+export function MockInterviewChat({ prepId, turns, onTurnsChange: setTurns }: MockInterviewChatProps) {
   const [draft, setDraft] = useState("");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +53,7 @@ export function MockInterviewChat({ prepId, initialTurns }: MockInterviewChatPro
 
   const [ttsSupported, setTtsSupported] = useState(false);
   const [ttsEnabled, setTtsEnabledState] = useState(false);
-  const lastSpokenIndexRef = useRef(initialTurns.length);
+  const lastSpokenIndexRef = useRef(turns.length);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });

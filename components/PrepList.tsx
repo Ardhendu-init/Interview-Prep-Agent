@@ -28,13 +28,18 @@ export function PrepList({ preps: initialPreps }: PrepListProps) {
 
   function handleDelete(prepId: string) {
     startTransition(async () => {
-      const result = await deletePrepAction(prepId);
-      if ("error" in result) {
-        setErrors((current) => ({ ...current, [prepId]: result.error }));
+      try {
+        const result = await deletePrepAction(prepId);
+        if ("error" in result) {
+          setErrors((current) => ({ ...current, [prepId]: result.error }));
+          setConfirmingId(null);
+          return;
+        }
+        setPreps((current) => current.filter((p) => p.id !== prepId));
+      } catch {
+        setErrors((current) => ({ ...current, [prepId]: "Something went wrong — please try again." }));
         setConfirmingId(null);
-        return;
       }
-      setPreps((current) => current.filter((p) => p.id !== prepId));
     });
   }
 

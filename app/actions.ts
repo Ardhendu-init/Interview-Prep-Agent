@@ -8,6 +8,7 @@ import {
   updatePrepResearch,
   updatePrepGuide,
   markPrepFailed,
+  claimPrepForResearch,
   deletePrep,
 } from "../lib/db/preps";
 import { listTurnsForPrep, appendTurn } from "../lib/db/turns";
@@ -37,12 +38,21 @@ export async function createPrepAndRunAgent(
 export async function runResearchAndGuide(prepId: string): Promise<void> {
   const { id: sessionId } = await getOrCreateSession();
 
-  try {
-    const prep = await getPrepById(sessionId, prepId);
-    if (!prep) {
-      return;
-    }
+  const prep = await getPrepById(sessionId, prepId);
+  if (!prep) {
+    return;
+  }
 
+  // Atomically claim the row before touching Gemini. A remount-triggered
+  // effect call racing a manual retry (or two tabs open on the same prep)
+  // both reach this line, but only one flips claimedAt — the loser returns
+  // immediately instead of duplicating the AI work.
+  const claimed = await claimPrepForResearch(prepId);
+  if (!claimed) {
+    return;
+  }
+
+  try {
     const input: ResearchInput = {
       company: prep.company,
       role: prep.role,

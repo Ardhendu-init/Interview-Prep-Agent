@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Bot, Maximize2, X } from "lucide-react";
 import type { InterviewTurn } from "../lib/types";
@@ -10,6 +10,7 @@ import { MockInterviewChat } from "./MockInterviewChat";
 interface InterviewPanelProps {
   prepId: string;
   turns: InterviewTurn[];
+  onTurnsChange: Dispatch<SetStateAction<InterviewTurn[]>>;
   mode: "expanded" | "focus";
   isMobile: boolean;
   width: number;
@@ -25,6 +26,7 @@ const FOCUSABLE_SELECTOR =
 export function InterviewPanel({
   prepId,
   turns,
+  onTurnsChange,
   mode,
   isMobile,
   width,
@@ -218,7 +220,7 @@ export function InterviewPanel({
       </div>
 
       <div ref={bodyRef} className="flex-1 overflow-y-auto p-4">
-        <MockInterviewChat prepId={prepId} initialTurns={turns} />
+        <MockInterviewChat prepId={prepId} turns={turns} onTurnsChange={onTurnsChange} />
       </div>
     </motion.div>
   );

@@ -14,11 +14,14 @@ what it explicitly is not (not real authentication).
 **`lib/session.ts`**
 
 - Cookie name: `interview_prep_session`
-- `getSessionIdFromCookie(): string | null` — reads the cookie via Next.js
-  `cookies()`, returns `null` if absent
-- `setSessionCookie(id: string): void` — sets an httpOnly, `sameSite: "lax"`
-  cookie, no `Secure` flag override needed (Next.js/Vercel handles this
+- `getSessionIdFromCookie(): Promise<string | null>` — reads the cookie via
+  Next.js `cookies()`, returns `null` if absent
+- `setSessionCookie(id: string): Promise<void>` — sets an httpOnly, `sameSite:
+  "lax"` cookie, no `Secure` flag override needed (Next.js/Vercel handles this
   correctly per environment), 1-year expiry
+- Next.js's `cookies()` is asynchronous — both functions must `await cookies()`
+  before calling `.get()` or `.set()` on the returned store; calling either
+  synchronously throws
 
 **Behavior**
 

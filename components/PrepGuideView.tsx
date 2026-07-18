@@ -97,13 +97,15 @@ function downloadMarkdown(prep: InterviewPrepRecord): void {
 
 export function PrepGuideView({ initialPrep, initialTurns }: PrepGuideViewProps) {
   const [prep, setPrep] = useState(initialPrep);
+  const [turns, setTurns] = useState(initialTurns);
   const [isPending, startTransition] = useTransition();
   const startedRef = useRef(false);
   const { showToast } = useToast();
 
   // Interview panel UI state — see 22-Interview-panel-redesign.md. Pure UI
   // preference, mirrored to localStorage via lib/panel-state.ts; interview
-  // turn history itself still comes from the database via initialTurns.
+  // turn history is seeded from the database via initialTurns, then kept live
+  // in `turns` so InterviewHeroCTA reflects new turns without a reload.
   const [panelOpen, setPanelOpenState] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [panelWidth, setPanelWidthState] = useState(480);
@@ -312,7 +314,7 @@ export function PrepGuideView({ initialPrep, initialTurns }: PrepGuideViewProps)
         >
           <PrepBreadcrumb company={prep.company} />
 
-          <InterviewHeroCTA ref={heroCtaRef} turns={initialTurns} onOpen={openPanel} />
+          <InterviewHeroCTA ref={heroCtaRef} turns={turns} onOpen={openPanel} />
 
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -399,7 +401,8 @@ export function PrepGuideView({ initialPrep, initialTurns }: PrepGuideViewProps)
           <InterviewPanel
             key="desktop-interview-panel"
             prepId={prep.id}
-            turns={initialTurns}
+            turns={turns}
+            onTurnsChange={setTurns}
             mode={focusMode ? "focus" : "expanded"}
             isMobile={false}
             width={panelWidth}
@@ -413,7 +416,8 @@ export function PrepGuideView({ initialPrep, initialTurns }: PrepGuideViewProps)
           <InterviewPanel
             key="mobile-interview-panel"
             prepId={prep.id}
-            turns={initialTurns}
+            turns={turns}
+            onTurnsChange={setTurns}
             mode="focus"
             isMobile
             width={panelWidth}

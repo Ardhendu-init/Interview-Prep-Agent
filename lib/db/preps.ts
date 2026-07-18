@@ -83,6 +83,7 @@ export async function updatePrepGuide(prepId: string, guide: PrepGuide): Promise
     data: {
       guide: guide as unknown as Prisma.InputJsonValue,
       status: "ready",
+      claimedAt: null,
     },
   });
 }
@@ -90,8 +91,22 @@ export async function updatePrepGuide(prepId: string, guide: PrepGuide): Promise
 export async function markPrepFailed(prepId: string): Promise<void> {
   await prisma.interviewPrep.update({
     where: { id: prepId },
-    data: { status: "failed" },
+    data: { status: "failed", claimedAt: null },
   });
+}
+
+// Atomic claim gate for runResearchAndGuide: only the caller that flips
+// claimedAt from null wins the row, so a concurrent second call (component
+// remount, a racing retry click) sees count === 0 and returns without ever
+// calling Gemini. claimedAt stays set for the whole run — including the
+// research -> generating_guide handoff — and is only cleared by the
+// terminal writes above, which is what lets a retry re-claim from "failed".
+export async function claimPrepForResearch(prepId: string): Promise<boolean> {
+  const result = await prisma.interviewPrep.updateMany({
+    where: { id: prepId, claimedAt: null },
+    data: { status: "researching", claimedAt: new Date() },
+  });
+  return result.count > 0;
 }
 
 export async function deletePrep(sessionId: string, prepId: string): Promise<boolean> {
