@@ -5,7 +5,7 @@ memory or assumption, is the source of truth for what's actually built.
 
 ## Current Phase
 
-- `16-mock-interview-chat-ui.md` done. Next: `17-error-and-loading-states.md`.
+- `17-error-and-loading-states.md` done. Next: `18-deployment-and-infra.md`.
 
 ## Current Goal
 
@@ -406,13 +406,69 @@ memory or assumption, is the source of truth for what's actually built.
       `initialTurns` (not client state) is the source of truth on reload.
     - `npx tsc --noEmit` and `npm run build` both pass.
 
+- `17-error-and-loading-states.md` — audited all three Server-Action call
+  sites (`NewPrepForm.tsx`, `PrepGuideView.tsx`, `MockInterviewChat.tsx`)
+  against the spec's five rules. `NewPrepForm.tsx` and `MockInterviewChat.tsx`
+  already satisfied all five (built that way from `13`/`16`) — no changes
+  needed. `PrepGuideView.tsx` had two gaps, fixed in this step:
+  - Its two `runResearchAndGuide` call sites (the mount effect and
+    `handleRetry`) called the Server Action directly, not wrapped in
+    `startTransition` — added a `useTransition` pair and wrapped both, so the
+    "Try again" button now disables and reads "Retrying…" while pending
+    (matches the existing `NewPrepForm`/`MockInterviewChat` pattern).
+  - `runResearchAndGuide` (`app/actions.ts`) could throw before entering its
+    own try/catch if `getPrepById` failed, violating rule 2's "never throws
+    across the Server Action boundary" — widened the try/catch to cover the
+    whole body after `getOrCreateSession` (consistent with why `06`/`07`/`08`'s
+    `lib/ai/*` functions are designed to never throw: any failure now reaches
+    `markPrepFailed`, so the already-existing `status === "failed"` UI is the
+    single source of truth for this failure, rather than requiring a second,
+    parallel error-reporting path). Added a client-side `catch` around both
+    call sites as a last-resort safety net (flips local `prep.status` to
+    `"failed"` if the action call itself rejects) and a `try/catch` around the
+    status-poll `fetch` in the second `useEffect`, so a network throttle
+    during polling can't produce an unhandled rejection or a silently stuck
+    loading state.
+  - Verified end to end against the real dev server and Supabase DB, driven
+    by a headless Chromium via Playwright (temporary `app/api/verify-tmp/
+    route.ts`, removed after testing; a temporary standalone Playwright
+    install in the scratchpad directory, not added to the project's
+    `package.json`; all seeded rows — two `InterviewPrep` rows and one
+    `Session` row — cleaned up via the temp route's own `DELETE` handler in
+    the same run): a company name over the 200-char limit correctly returned
+    `createPrepAndRunAgent`'s `{ error: "Please provide a valid company name
+    and role." }`, rendered inline in red with the form's values retained and
+    the submit button re-enabled — a real forced Server Action failure
+    reachable through the actual UI, not a simulated one. A prep seeded
+    directly to `status: "failed"` rendered the styled error card; clicking
+    "Try again" visibly disabled the button and showed "Retrying…" (confirmed
+    in a screenshot, not just a DOM query — an initial text-locator assertion
+    taken at the same instant raced the render and returned a false negative,
+    but the screenshot is unambiguous), then transitioned to the
+    "Researching the company…" loading-shape card, confirming no stuck or
+    blank state. A prep seeded directly to `status: "ready"` with a fabricated
+    guide reached `MockInterviewChat`; "Start Mock Interview" produced a real
+    Gemini-generated opening question (this run's dev server used the real
+    `GEMINI_API_KEY`, so this also incidentally re-confirmed the happy path);
+    submitting a 5001-character answer correctly hit `candidateAnswerSchema`'s
+    max-length validation, returned `{ error: "Please provide an answer
+    before submitting." }`, rolled back the optimistic candidate turn, and
+    left the input and Send button enabled as the way forward. `npx tsc
+    --noEmit` and `npm run build` both pass.
+  - **Scope note:** did not touch `MockInterviewChat.tsx`'s existing behavior
+    of clearing the draft input before the request resolves (so a rejected
+    answer must be retyped rather than restored) — it already satisfies the
+    spec's "never a dead end" bar (the input stays enabled and empty, ready
+    for input) and the file wasn't otherwise in scope for this step; flagging
+    here in case it's worth a follow-up UX polish later.
+
 ## In Progress
 
 - None.
 
 ## Next Up
 
-- `17-error-and-loading-states.md`
+- `18-deployment-and-infra.md`
 
 ## Open Questions
 

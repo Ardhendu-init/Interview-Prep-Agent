@@ -35,18 +35,18 @@ export async function createPrepAndRunAgent(
 export async function runResearchAndGuide(prepId: string): Promise<void> {
   const { id: sessionId } = await getOrCreateSession();
 
-  const prep = await getPrepById(sessionId, prepId);
-  if (!prep) {
-    return;
-  }
-
-  const input: ResearchInput = {
-    company: prep.company,
-    role: prep.role,
-    jobDescription: prep.jobDescription ?? undefined,
-  };
-
   try {
+    const prep = await getPrepById(sessionId, prepId);
+    if (!prep) {
+      return;
+    }
+
+    const input: ResearchInput = {
+      company: prep.company,
+      role: prep.role,
+      jobDescription: prep.jobDescription ?? undefined,
+    };
+
     const findings = await runResearch(input);
     await updatePrepResearch(prepId, findings);
 

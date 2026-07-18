@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import type { InterviewPrepRecord, InterviewTurn, PrepStatus } from "../lib/types";
 import { runResearchAndGuide } from "../app/actions";
 import { MockInterviewChat } from "./MockInterviewChat";
@@ -82,12 +82,19 @@ function downloadMarkdown(prep: InterviewPrepRecord): void {
 
 export function PrepGuideView({ initialPrep, initialTurns }: PrepGuideViewProps) {
   const [prep, setPrep] = useState(initialPrep);
+  const [isPending, startTransition] = useTransition();
   const startedRef = useRef(false);
 
   useEffect(() => {
     if (prep.status === "researching" && !startedRef.current) {
       startedRef.current = true;
-      runResearchAndGuide(prep.id);
+      startTransition(async () => {
+        try {
+          await runResearchAndGuide(prep.id);
+        } catch {
+          setPrep((current) => ({ ...current, status: "failed" }));
+        }
+      });
     }
   }, [prep.status, prep.id]);
 
@@ -96,10 +103,14 @@ export function PrepGuideView({ initialPrep, initialTurns }: PrepGuideViewProps)
       return;
     }
     const interval = setInterval(async () => {
-      const res = await fetch(`/api/prep/${prep.id}`);
-      if (res.ok) {
-        const latest: InterviewPrepRecord = await res.json();
-        setPrep(latest);
+      try {
+        const res = await fetch(`/api/prep/${prep.id}`);
+        if (res.ok) {
+          const latest: InterviewPrepRecord = await res.json();
+          setPrep(latest);
+        }
+      } catch {
+        // Transient network failure — the next poll tick retries automatically.
       }
     }, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
@@ -108,7 +119,13 @@ export function PrepGuideView({ initialPrep, initialTurns }: PrepGuideViewProps)
   function handleRetry() {
     startedRef.current = true;
     setPrep((current) => ({ ...current, status: "researching" }));
-    runResearchAndGuide(prep.id);
+    startTransition(async () => {
+      try {
+        await runResearchAndGuide(prep.id);
+      } catch {
+        setPrep((current) => ({ ...current, status: "failed" }));
+      }
+    });
   }
 
   if (prep.status === "failed") {
@@ -121,9 +138,10 @@ export function PrepGuideView({ initialPrep, initialTurns }: PrepGuideViewProps)
         <button
           type="button"
           onClick={handleRetry}
-          className="self-start rounded-md bg-blue-600 hover:bg-blue-500 text-neutral-100 text-sm px-4 py-2"
+          disabled={isPending}
+          className="self-start rounded-md bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:hover:bg-blue-600 text-neutral-100 text-sm px-4 py-2"
         >
-          Try again
+          {isPending ? "Retrying…" : "Try again"}
         </button>
       </div>
     );
@@ -149,9 +167,10 @@ export function PrepGuideView({ initialPrep, initialTurns }: PrepGuideViewProps)
         <button
           type="button"
           onClick={handleRetry}
-          className="self-start rounded-md bg-blue-600 hover:bg-blue-500 text-neutral-100 text-sm px-4 py-2"
+          disabled={isPending}
+          className="self-start rounded-md bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:hover:bg-blue-600 text-neutral-100 text-sm px-4 py-2"
         >
-          Try again
+          {isPending ? "Retrying…" : "Try again"}
         </button>
       </div>
     );
