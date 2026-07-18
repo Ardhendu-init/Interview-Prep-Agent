@@ -39,7 +39,23 @@
 - Server Components by default. Add `"use client"` only where browser
   interactivity is required (forms, chat scroll position, button handlers)
 - Server Actions are the only sanctioned way to mutate data or call the AI
-  provider from the UI — no client-side `fetch` to a `/api/*` route for this app
+  provider from the UI — no client-side `fetch` to a `/api/*` route for
+  mutations or AI-provider calls in this app
+  - **Narrow, discovered exception:** a read-only Route Handler is permitted
+    for client-side polling of already-computed status
+    (`app/api/prep/[id]/route.ts`, `GET`, used by `PrepGuideView`). Found via
+    live testing in `14-prep-page-and-guide-view.md`: Next.js's client
+    runtime dispatches every `"use server"` call from a page through one
+    sequential action queue, so a Server-Action-based poll queues behind a
+    long-running in-flight action (`runResearchAndGuide`, 20-40s) and never
+    actually reaches the server until that action resolves — the live
+    "Researching…" → "Writing your prep guide…" progression never renders,
+    it just jumps straight to "ready" once the queue drains. A plain
+    `fetch()` to a Route Handler bypasses that queue entirely. This doesn't
+    weaken the rule above — the handler performs no mutation and calls no AI
+    provider, so it stays within the rule's actual intent (scoped to
+    mutating/AI-calling operations, matching `progress-tracker.md`'s
+    already-recorded architecture decision on this).
 - Keep Server Actions thin (see architecture.md invariant 2): validate, delegate,
   return. No inline business logic, no inline Prisma queries, no inline prompts
 - Route structure:
@@ -88,6 +104,8 @@
 app/
   page.tsx              — home page (list of past preps)
   prep/[id]/page.tsx     — single prep view
+  api/prep/[id]/route.ts   — read-only status poll (GET), see the Next.js
+                              section's Server Actions exception above
   actions.ts               — all Server Actions
   layout.tsx                 — root layout
 lib/

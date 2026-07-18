@@ -9,7 +9,18 @@
 - If `null` (not found or not this session's): render a simple "Prep not found"
   message with a link back to `/`, not a Next.js default 404 — this is a
   reachable, expected state (e.g. an old/invalid link), handle it explicitly
-- Passes the initial prep record to `<PrepGuideView initialPrep={prep} />`
+- Also calls `listTurnsForPrep(id)` (empty array if the prep isn't `"ready"` —
+  no interview can exist yet) so the full turn history is available on first
+  paint, per `16-mock-interview-chat-ui.md`'s Verify requirement that a
+  mid-conversation refresh loads `initialTurns` "from the Server Component,"
+  not via a client-side fetch after mount
+  - **Resolved ambiguity:** this file originally only mentioned
+    `getPrepById`, with no path for `initialTurns` to reach
+    `MockInterviewChat` (which `PrepGuideView` renders below the guide).
+    Resolved by having this Server Component fetch both and pass both down,
+    since `16`'s own text requires the Server-Component-loaded path.
+- Passes the initial prep record and turns to
+  `<PrepGuideView initialPrep={prep} initialTurns={turns} />`
 
 **`components/PrepGuideView.tsx`**
 

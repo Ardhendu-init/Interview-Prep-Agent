@@ -16,7 +16,11 @@
 ## System Boundaries
 
 - `app/` — routes, page composition, Server Actions. No direct Prisma or Gemini
-  calls here — this layer calls into `lib/`.
+  calls here — this layer calls into `lib/`. One narrow exception:
+  `app/api/prep/[id]/route.ts` is a read-only Route Handler (not a Server
+  Action) used for client-side status polling — see `code-standards.md`'s
+  Next.js section for why a Server Action can't do this job (client-side
+  action-queue serialization, discovered in `14-prep-page-and-guide-view.md`).
 - `app/actions.ts` — the *only* bridge between client components and business logic
   in `lib/`. Every Server Action: (1) reads/validates session cookie, (2) validates
   input with a Zod schema, (3) delegates to `lib/`, (4) returns a typed result.

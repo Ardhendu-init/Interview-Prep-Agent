@@ -5,7 +5,7 @@ memory or assumption, is the source of truth for what's actually built.
 
 ## Current Phase
 
-- `13-new-prep-form.md` done. Next: `14-prep-page-and-guide-view.md`.
+- `16-mock-interview-chat-ui.md` done. Next: `17-error-and-loading-states.md`.
 
 ## Current Goal
 
@@ -334,13 +334,85 @@ memory or assumption, is the source of truth for what's actually built.
     `09-server-actions-preps.md` contract exactly. `npx tsc --noEmit` and
     `npm run build` both pass.
 
+- `14-prep-page-and-guide-view.md` — `app/prep/[id]/page.tsx` (Server
+  Component: `getSessionIdFromCookie`, `getPrepById`, "Prep not found" state
+  for a `null` result) and `components/PrepGuideView.tsx` (Client Component:
+  mount-triggered `runResearchAndGuide`, 2s status polling, failed/in-progress/
+  ready states, full guide rendering) written per spec. Implemented together
+  with `15-markdown-export.md` and `16-mock-interview-chat-ui.md` in the same
+  session since `14`'s own spec text requires rendering
+  `<MockInterviewChat prepId={...} guide={...} initialTurns={...} />` below the
+  guide — `14` cannot be verified end to end without it existing, the same
+  reasoning `13` used for building alongside `12`.
+  - **Resolved ambiguity (edited `14-prep-page-and-guide-view.md` in this
+    step):** the spec only described `page.tsx` calling `getPrepById`, with no
+    path for `initialTurns` to reach `MockInterviewChat`. `16`'s own Verify
+    section requires turns to be "loaded via `initialTurns` from the Server
+    Component," so `page.tsx` now also calls `listTurnsForPrep(id)` (empty
+    array when not yet `"ready"`) and `PrepGuideView` takes an added
+    `initialTurns` prop passed straight through.
+  - **Deviation found via live testing, documented in `code-standards.md` and
+    `architecture.md` in this step:** the spec suggested polling via either
+    "a Server Action or a lightweight re-fetch of `getPrepById` equivalent."
+    Built the Server Action version first (a `fetchPrep` action wrapping
+    `getPrepById`) and it visibly failed under live testing — a real Zerodha/
+    Stripe run stayed on "Researching the company…" for the entire ~20-40s of
+    the `runResearchAndGuide` action, then jumped straight to the finished
+    guide with zero "Writing your prep guide…" frames ever shown, confirmed via
+    Playwright request-timing logs (the polling action's own network requests
+    weren't even sent until the long-running action's response landed). Root
+    cause: Next.js's client runtime dispatches every `"use server"` call from
+    a page through one sequential action queue, so the polling action queued
+    behind the in-flight `runResearchAndGuide` call instead of running
+    concurrently. Fixed by replacing the polling action with a plain
+    read-only Route Handler (`app/api/prep/[id]/route.ts`, `GET`), polled via
+    `fetch()` from the client — this bypasses the action queue entirely, since
+    it's not a `"use server"` dispatch. Re-verified: a fresh Stripe run showed
+    the live "Researching…" → "Writing your prep guide…" → full guide
+    progression with no manual refresh. Documented as a narrow, explicit
+    exception to the "Server Actions only" rule in both `code-standards.md`
+    and `architecture.md` (the rule's own intent — no mutation, no AI-provider
+    call from the client — was never actually violated by this fix).
+  - Verified end to end against the real dev server, real Gemini API, and real
+    Supabase DB (Playwright driving a real headless Chromium; all test rows
+    cleaned up via a temporary `app/api/verify-tmp/route.ts` `DELETE` handler,
+    removed after testing, same pattern as earlier steps):
+    - A fresh Stripe/Software-Engineer prep showed the live status
+      progression described above, then rendered a full guide with real,
+      company-specific research (correctly describing Stripe's payment
+      infrastructure, its multi-round interview process, and its culture)
+      and 6+ concepts/9+ questions with real resource links — satisfying this
+      spec's Verify section.
+    - `/prep/<bogus-id>` with a session cookie that owns no such prep rendered
+      the "Prep not found" state with a working link back to `/`, not a
+      framework 404.
+    - A prep seeded directly to `"failed"` status rendered the error state
+      with a "Try again" button; clicking it optimistically flipped the UI to
+      "Researching the company…" and re-invoked `runResearchAndGuide`.
+    - `15-markdown-export.md`: clicking "Download Markdown" on a real
+      Figma/Frontend-Engineer guide produced `figma-interview-prep.md` with
+      correctly structured headers, a research-summary section, a concepts
+      section with linked resources, and a questions section with category +
+      hint — file content inspected directly, not just download-triggered.
+    - `16-mock-interview-chat-ui.md`: clicking "Start Mock Interview" on a
+      Notion/Product-Engineer guide produced a real, guide-grounded opening
+      question (referencing Notion's real-time collaborative editing);
+      submitting a detailed CRDT-based answer produced optimistic candidate
+      turn placement followed by a genuinely adaptive follow-up question
+      (asking to go deeper into specific CRDT types) — confirming the
+      interviewer agent's adaptive behavior end to end through the UI, not
+      just at the `lib/ai/` layer as in `08`. Refreshing the page
+      mid-conversation reproduced the exact same turn history, confirming
+      `initialTurns` (not client state) is the source of truth on reload.
+    - `npx tsc --noEmit` and `npm run build` both pass.
+
 ## In Progress
 
 - None.
 
 ## Next Up
 
-- `14-prep-page-and-guide-view.md`
+- `17-error-and-loading-states.md`
 
 ## Open Questions
 
