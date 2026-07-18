@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { MessageCircle, Send, Timer } from "lucide-react";
-import type { PrepGuide, InterviewTurn } from "../lib/types";
+import { MessageCircle, Send } from "lucide-react";
+import type { InterviewTurn } from "../lib/types";
 import { submitInterviewAnswer } from "../app/actions";
 import { Card } from "./ui/Card";
 import { Button } from "./ui/Button";
@@ -12,19 +12,11 @@ import { useToast } from "./ui/Toast";
 
 interface MockInterviewChatProps {
   prepId: string;
-  guide: PrepGuide;
   initialTurns: InterviewTurn[];
 }
 
 function formatTimestamp(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
-
-function formatElapsed(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
 function TypingIndicator() {
@@ -41,33 +33,13 @@ function TypingIndicator() {
   );
 }
 
-export function MockInterviewChat({ prepId, guide, initialTurns }: MockInterviewChatProps) {
+export function MockInterviewChat({ prepId, initialTurns }: MockInterviewChatProps) {
   const [turns, setTurns] = useState(initialTurns);
   const [draft, setDraft] = useState("");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [elapsedMs, setElapsedMs] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
-
-  const totalQuestions = guide.questions.length;
-  const questionsAsked = turns.filter((t) => t.role === "interviewer").length;
-  const completionPct =
-    totalQuestions > 0 ? Math.min(100, Math.round((questionsAsked / totalQuestions) * 100)) : 0;
-
-  const startedAt = useMemo(() => (turns.length > 0 ? new Date(turns[0].createdAt).getTime() : null), [turns]);
-
-  useEffect(() => {
-    if (startedAt === null) {
-      return;
-    }
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- initializes the live clock immediately, then the interval below keeps it ticking
-    setElapsedMs(Date.now() - startedAt);
-    const interval = setInterval(() => {
-      setElapsedMs(Date.now() - startedAt);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [startedAt]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -145,34 +117,7 @@ export function MockInterviewChat({ prepId, guide, initialTurns }: MockInterview
 
   return (
     <Card padding="md" className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-medium text-fg">Mock Interview</h2>
-          <div className="flex items-center gap-3 text-xs text-fg-muted">
-            {totalQuestions > 0 && (
-              <span>
-                Question {Math.min(questionsAsked, totalQuestions)} of {totalQuestions}
-              </span>
-            )}
-            {startedAt !== null && (
-              <span className="flex items-center gap-1">
-                <Timer className="size-3.5" />
-                {formatElapsed(elapsedMs)}
-              </span>
-            )}
-          </div>
-        </div>
-        {totalQuestions > 0 && (
-          <div className="h-1 w-full overflow-hidden rounded-full bg-surface-hover">
-            <motion.div
-              className="h-full rounded-full bg-accent"
-              initial={false}
-              animate={{ width: `${completionPct}%` }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
-            />
-          </div>
-        )}
-      </div>
+      <h2 className="text-lg font-medium text-fg">Mock Interview</h2>
 
       <div
         className="flex max-h-112 flex-col gap-4 overflow-y-auto px-0.5 py-1"

@@ -3,13 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Bot, Maximize2, X } from "lucide-react";
-import type { PrepGuide, InterviewTurn } from "../lib/types";
+import type { InterviewTurn } from "../lib/types";
 import { clampPanelWidth, setPanelWidth as persistPanelWidth } from "../lib/panel-state";
 import { MockInterviewChat } from "./MockInterviewChat";
 
 interface InterviewPanelProps {
   prepId: string;
-  guide: PrepGuide;
   turns: InterviewTurn[];
   mode: "expanded" | "focus";
   isMobile: boolean;
@@ -25,7 +24,6 @@ const FOCUSABLE_SELECTOR =
 
 export function InterviewPanel({
   prepId,
-  guide,
   turns,
   mode,
   isMobile,
@@ -48,9 +46,6 @@ export function InterviewPanel({
       }
     };
   }, []);
-
-  const totalQuestions = guide.questions.length;
-  const questionsAsked = turns.filter((t) => t.role === "interviewer").length;
 
   // Move focus to the panel's first interactive element (answer input, or
   // start button) once, when the panel first mounts (i.e. opens).
@@ -199,11 +194,6 @@ export function InterviewPanel({
         )}
 
         <div className="flex items-center gap-2">
-          {totalQuestions > 0 && (
-            <span className="text-xs text-fg-muted">
-              Question {Math.min(questionsAsked, totalQuestions)} of {totalQuestions}
-            </span>
-          )}
           {!isMobile && !isFocus && (
             <button
               type="button"
@@ -228,7 +218,7 @@ export function InterviewPanel({
       </div>
 
       <div ref={bodyRef} className="flex-1 overflow-y-auto p-4">
-        <MockInterviewChat prepId={prepId} guide={guide} initialTurns={turns} />
+        <MockInterviewChat prepId={prepId} initialTurns={turns} />
       </div>
     </motion.div>
   );

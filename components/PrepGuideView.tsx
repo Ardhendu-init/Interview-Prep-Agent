@@ -312,7 +312,7 @@ export function PrepGuideView({ initialPrep, initialTurns }: PrepGuideViewProps)
         >
           <PrepBreadcrumb company={prep.company} />
 
-          <InterviewHeroCTA ref={heroCtaRef} guide={guide} turns={initialTurns} onOpen={openPanel} />
+          <InterviewHeroCTA ref={heroCtaRef} turns={initialTurns} onOpen={openPanel} />
 
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -399,7 +399,6 @@ export function PrepGuideView({ initialPrep, initialTurns }: PrepGuideViewProps)
           <InterviewPanel
             key="desktop-interview-panel"
             prepId={prep.id}
-            guide={guide}
             turns={initialTurns}
             mode={focusMode ? "focus" : "expanded"}
             isMobile={false}
@@ -414,7 +413,6 @@ export function PrepGuideView({ initialPrep, initialTurns }: PrepGuideViewProps)
           <InterviewPanel
             key="mobile-interview-panel"
             prepId={prep.id}
-            guide={guide}
             turns={initialTurns}
             mode="focus"
             isMobile
