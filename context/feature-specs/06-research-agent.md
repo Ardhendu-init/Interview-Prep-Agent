@@ -20,7 +20,7 @@ typed object.
 **System prompt — required content, not exact wording**
 
 Must instruct the model to:
-1. Use the `web_search_20250305` tool to gather: what the company does and its
+1. Use web search grounding to gather: what the company does and its
    size/stage, signals about their interview process (search review sites,
    forums, blog posts by past candidates), culture/comp signals if available
 2. Decide its own search queries based on what it learns — search again if
@@ -38,15 +38,29 @@ Must instruct the model to:
    SOURCES: <comma-separated URLs actually used>
    ```
 
-**Loop implementation**
+**Search implementation**
 
-- Bounded loop, `MAX_TURNS = 6` — call `anthropic.messages.create` with the
-  `web_search_20250305` tool available, append each response to message history,
-  continue while the model issues `tool_use` blocks, stop when it returns final
-  text with `stop_reason !== "tool_use"`
-- If `MAX_TURNS` is exhausted without a clean final-text response, treat it as a
-  failure and return the fallback object described above — do not attempt to
-  parse a partial/mid-search response as if it were final
+- Single call to `openai.responses.create` (via `generateSearchContent` in
+  `client.ts`) with `tools: [{ type: "web_search" }]` set, `instructions:
+  SYSTEM_PROMPT`, and `input: <user prompt>`. Unlike a manual tool-call loop,
+  OpenAI's web search tool is server-executed: the model issues as many
+  internal search queries as it needs and returns one final response — there
+  is no `tool_calls` round trip to drive by hand
+- Uses the Responses API, not Chat Completions, specifically for this file —
+  confirmed live against the real API that Chat Completions' `web_search_options`
+  is only accepted by dedicated search models (`gpt-4o-search-preview`,
+  `gpt-5-search-api`), not `MODEL` itself, while the Responses API's
+  `web_search` tool works with `MODEL` directly. `guide-generator.ts` and
+  `mock-interviewer.ts` are unaffected and still use Chat Completions via
+  `generateContent`/`generateContentLite`
+- Treat the call as failed (return the fallback object below, do not attempt to
+  parse anything) if `response.output_text` is empty/undefined, or
+  `response.status` is not `"completed"` (e.g. `"failed"`, `"incomplete"` with
+  no usable text)
+- Citation/source annotations are available on the output message's
+  `content[].annotations[].url_citation` if needed to cross-check the model's
+  own `SOURCES:` line, but the parser below reads `SOURCES:` from
+  `response.output_text`, not from the annotations
 
 **Parsing**
 
@@ -60,4 +74,4 @@ Must instruct the model to:
 
 - See `19-manual-verification.md` test matrix, items 1-3
 
-**Status: not started**
+**Status: done**

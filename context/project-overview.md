@@ -87,4 +87,4 @@ after the hackathon ends.
    list, restores the exact state of a prep session — guide and full interview
    history intact
 4. The application deploys with exactly two required environment variables
-   (`ANTHROPIC_API_KEY`, `DATABASE_URL`) and no other manual setup
+   (`OPENAI_API_KEY`, `DATABASE_URL`) and no other manual setup

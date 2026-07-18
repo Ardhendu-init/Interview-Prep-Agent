@@ -1,6 +1,6 @@
 ### Manual Verification
 
-Not code — a checklist to run locally once a real `ANTHROPIC_API_KEY` and a real
+Not code — a checklist to run locally once a real `OPENAI_API_KEY` and a real
 Supabase `DATABASE_URL`/`DIRECT_URL` are in `.env.local`. Nothing in
 `18-deployment-and-infra.md` should be trusted as ready until every item here
 passes.
@@ -33,7 +33,7 @@ passes.
 10. **Session isolation**: open the app in a second, separate browser (or a
     true incognito window with cookies never shared) — confirm it shows an
     empty prep list, not the first browser's preps
-11. **Error path**: temporarily set an invalid `ANTHROPIC_API_KEY`, create a new
+11. **Error path**: temporarily set an invalid `OPENAI_API_KEY`, create a new
     prep, confirm the UI reaches a `"failed"` status with a working "Try again"
     button rather than hanging indefinitely
 12. `npm run build` passes

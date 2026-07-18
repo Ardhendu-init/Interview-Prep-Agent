@@ -35,6 +35,12 @@ Must instruct the model to:
    real-time trading product should produce a domain question about real-time
    data handling, not a generic question)
 
+**Call configuration**
+
+- Set `response_format: { type: "json_object" }` on the `generateContent`
+  call — this makes the model emit raw JSON without markdown fences in the
+  common case, but is not a substitute for the defensive parsing below
+
 **Parsing**
 
 - Strip accidental code fences defensively (`replace(/```json|```/g, "")`)
@@ -47,4 +53,5 @@ Must instruct the model to:
 - See `19-manual-verification.md` test matrix, item 4: confirm `whyItMatters`
   text differs meaningfully between two different companies for the same role
 
-**Status: not started**
+**Status: done** — see `progress-tracker.md` for verification detail and the
+one open item (second-company comparison blocked by daily API quota).

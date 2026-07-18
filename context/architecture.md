@@ -4,19 +4,23 @@
 
 | Layer       | Technology                                | Role                                                        |
 | ----------- | ------------------------------------------ | ------------------------------------------------------------- |
-| Framework    | Next.js 15 (App Router) + TypeScript        | Single deployable unit — frontend + backend in one app         |
+| Framework    | Next.js 16 (App Router) + TypeScript        | Single deployable unit — frontend + backend in one app         |
 | UI            | Tailwind CSS, utility classes only            | Styling — no component library, see ui-context.md               |
 | ORM             | Prisma 7                                        | Type-safe database access, migrations                           |
 | Database          | PostgreSQL via Supabase                           | Persistence — sessions, prep guides, interview turns             |
-| AI Provider          | Anthropic API (`@anthropic-ai/sdk`)                 | Research agent, guide generation, mock interviewer                |
+| AI Provider          | OpenAI API (`openai`)                 | Research agent, guide generation, mock interviewer                |
 | Validation              | Zod                                                   | Runtime validation at every system boundary — see code-standards |
 | Deployment                | Vercel                                                  | Hosting; connects to Supabase via `DATABASE_URL`                  |
 | Session identity             | Signed httpOnly cookie (no auth library)                  | Anonymous session scoping, not real authentication                 |
 
 ## System Boundaries
 
-- `app/` — routes, page composition, Server Actions. No direct Prisma or Anthropic
-  calls here — this layer calls into `lib/`.
+- `app/` — routes, page composition, Server Actions. No direct Prisma or OpenAI
+  calls here — this layer calls into `lib/`. One narrow exception:
+  `app/api/prep/[id]/route.ts` is a read-only Route Handler (not a Server
+  Action) used for client-side status polling — see `code-standards.md`'s
+  Next.js section for why a Server Action can't do this job (client-side
+  action-queue serialization, discovered in `14-prep-page-and-guide-view.md`).
 - `app/actions.ts` — the *only* bridge between client components and business logic
   in `lib/`. Every Server Action: (1) reads/validates session cookie, (2) validates
   input with a Zod schema, (3) delegates to `lib/`, (4) returns a typed result.
@@ -60,9 +64,24 @@
 
 ## Auth and Access Model
 
-- No real authentication. On first visit, middleware or the home page Server
-  Component creates a `Session` row and sets a signed httpOnly cookie containing
-  the session id.
+- No real authentication. On first visit, a `Session` row is created and a
+  signed httpOnly cookie containing the session id is set.
+- **Verified constraint (Next.js 16, `03-session-identity.md`):** a Server
+  Component render cannot call `cookies().set()` — confirmed by direct testing,
+  Next.js throws `Cookies can only be modified in a Server Action or Route
+  Handler` if it tries. This means `getOrCreateSession()` can only *persist* a
+  newly created session (i.e. actually set the cookie) when called from a
+  Server Action or Route Handler — never from a plain Server Component render
+  (e.g. the home page listing past preps). `getOrCreateSession()` itself is
+  implemented exactly per spec and works correctly end to end when called from
+  a Server Action/Route Handler (verified: first visit creates a session +
+  cookie, a repeat visit with a valid cookie reuses it, a valid cookie whose
+  row was deleted gets a fresh session + cookie). How the home page's
+  first-ever-visit case is handled (bootstrap via the first Server Action call
+  vs. a `proxy.ts` — Next 16's renamed `middleware.ts` — pre-seeding the
+  cookie) is an open decision, deferred to whichever of
+  `09-server-actions-preps.md` or `12-home-page-prep-list.md` is implemented
+  first. See open question in `progress-tracker.md`.
 - Every `InterviewPrep` row is scoped to exactly one `Session` via a foreign key.
   A user can only read/mutate `InterviewPrep` rows belonging to their own session
   cookie — enforce this check in every `lib/db/` function that takes a prep id,
@@ -73,7 +92,7 @@
 
 ## Invariants
 
-1. The Anthropic API key and the database connection string are read only in
+1. The OpenAI API key and the database connection string are read only in
    server-side code (`lib/ai/client.ts`, `lib/db/client.ts`), both executed only
    inside Server Actions or Server Components. Neither is ever sent to or
    readable by the client.

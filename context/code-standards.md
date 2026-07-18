@@ -39,7 +39,23 @@
 - Server Components by default. Add `"use client"` only where browser
   interactivity is required (forms, chat scroll position, button handlers)
 - Server Actions are the only sanctioned way to mutate data or call the AI
-  provider from the UI — no client-side `fetch` to a `/api/*` route for this app
+  provider from the UI — no client-side `fetch` to a `/api/*` route for
+  mutations or AI-provider calls in this app
+  - **Narrow, discovered exception:** a read-only Route Handler is permitted
+    for client-side polling of already-computed status
+    (`app/api/prep/[id]/route.ts`, `GET`, used by `PrepGuideView`). Found via
+    live testing in `14-prep-page-and-guide-view.md`: Next.js's client
+    runtime dispatches every `"use server"` call from a page through one
+    sequential action queue, so a Server-Action-based poll queues behind a
+    long-running in-flight action (`runResearchAndGuide`, 20-40s) and never
+    actually reaches the server until that action resolves — the live
+    "Researching…" → "Writing your prep guide…" progression never renders,
+    it just jumps straight to "ready" once the queue drains. A plain
+    `fetch()` to a Route Handler bypasses that queue entirely. This doesn't
+    weaken the rule above — the handler performs no mutation and calls no AI
+    provider, so it stays within the rule's actual intent (scoped to
+    mutating/AI-calling operations, matching `progress-tracker.md`'s
+    already-recorded architecture decision on this).
 - Keep Server Actions thin (see architecture.md invariant 2): validate, delegate,
   return. No inline business logic, no inline Prisma queries, no inline prompts
 - Route structure:
@@ -81,6 +97,13 @@
 - Tailwind utility classes only — no separate CSS files beyond `globals.css`
 - Follow the palette, spacing, and radius scale defined in `ui-context.md` — no
   arbitrary hex values or magic numbers in `className` strings
+- Since `18-uiux-enhancement.md`: use the semantic color tokens (`bg-surface`,
+  `text-fg`, `border-border`, etc., see `ui-context.md`'s Colors table), never
+  raw Tailwind palette classes (`bg-neutral-900`, `text-blue-400`) — raw
+  palette classes don't repaint when the active theme changes
+- Prefer the shared primitives in `components/ui/` (`Button`, `Card`, `Input`/
+  `Textarea`, `Skeleton`, `EmptyState`, `Toast`) over hand-rolled markup for
+  anything they already cover
 
 ## File Organization
 
@@ -88,11 +111,13 @@
 app/
   page.tsx              — home page (list of past preps)
   prep/[id]/page.tsx     — single prep view
+  api/prep/[id]/route.ts   — read-only status poll (GET), see the Next.js
+                              section's Server Actions exception above
   actions.ts               — all Server Actions
   layout.tsx                 — root layout
 lib/
   ai/
-    client.ts                  — shared Anthropic client + model constant
+    client.ts                  — shared OpenAI client + model constant
     research-agent.ts            — research step
     guide-generator.ts             — guide generation step
     mock-interviewer.ts              — mock interview step
@@ -104,10 +129,28 @@ lib/
   session.ts                                   — cookie read/write helpers
   types.ts                                       — shared TS interfaces
   validation.ts                                   — Zod schemas mirroring types.ts
+  format.ts                                        — display-formatting helpers (e.g. relative dates)
+  theme.ts                                          — theme list/type, localStorage key, no-flash init script (see ui-context.md)
+  panel-state.ts                                     — interview panel UI-state localStorage helpers (open/width), see 22-Interview-panel-redesign.md
+  speech-recognition-types.ts                         — ambient SpeechRecognition types (not in lib.dom.d.ts) + feature-detection helper
+  tts-preference.ts                                    — text-to-speech toggle localStorage helpers, see 18-uiux-enhancement.md section 2
 components/
+  ui/
+    Button.tsx                                          — button variants (primary/secondary/outline/ghost/danger)
+    Card.tsx                                              — card surface, optional hover elevation
+    Field.tsx                                              — Input/Textarea/Label with shared focus-ring styling
+    Skeleton.tsx                                            — pulsing loading placeholder
+    EmptyState.tsx                                           — icon + title + description + action
+    Toast.tsx                                                 — ToastProvider + useToast()
+  Navbar.tsx                                              — sticky header: logo, theme switcher, session badge
+  ThemeSwitcher.tsx                                         — theme dropdown, writes data-theme + localStorage
+  PageTransition.tsx                                         — page-level fade-in wrapper (mounted in layout.tsx)
+  PrepBreadcrumb.tsx                                         — back link + Home → Company breadcrumb on /prep/[id]
   PrepList.tsx                                      — home page list
   NewPrepForm.tsx                                      — company/role input form
-  PrepGuideView.tsx                                      — guide display + export
+  PrepGuideView.tsx                                      — guide display + export + interview panel orchestration (open/focus/mobile-tab state)
+  InterviewHeroCTA.tsx                                     — top-of-page entry point that opens the interview panel
+  InterviewPanel.tsx                                        — resizable side panel / focus mode / mobile full-view host for MockInterviewChat
   MockInterviewChat.tsx                                    — chat UI
 prisma/
   schema.prisma                                              — database schema

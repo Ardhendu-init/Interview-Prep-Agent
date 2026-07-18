@@ -26,6 +26,16 @@ mid-interview crash is a worse experience than a slightly awkward recovery line.
   `10-server-actions-interview.md`) is responsible for persisting each new turn
   both before and after calling this function.
 
+**Model**
+
+- Calls `generateContentLite` (`LITE_MODEL`, i.e. `gpt-5.4-mini`) from
+  `client.ts`, not `generateContent`/`MODEL`. One interview turn = one call,
+  and cost compounds fast across a multi-turn session — routing straight to
+  `LITE_MODEL` keeps interview volume off the pricier tier that
+  research/guide generation use, while still using a model capable of real
+  reasoning about answer quality (not the smaller `gpt-5.4-nano` tier, which
+  is sized for classification/completion, not judgment calls).
+
 **System prompt — required content**
 
 Must instruct the model to:
@@ -49,4 +59,6 @@ Must instruct the model to:
   answer and one deliberately strong answer in the same session must produce
   visibly different follow-up approaches
 
-**Status: not started**
+**Status: done** — see `progress-tracker.md` for verification detail and the
+one open item (full shallow-vs-strong divergence check blocked by daily API
+quota, same constraint as `07-guide-generator.md`).
