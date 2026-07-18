@@ -622,6 +622,66 @@ memory or assumption, is the source of truth for what's actually built.
       against it this step.
   - `npx tsc --noEmit`, `npm run lint`, and `npm run build` all pass clean.
 
+- `23-fix-and-delete-prep.md` — bundled fixes, done, implemented and verified
+  in order per the spec:
+  - **Fix 1** (message role alternation bug): the spec's code sample assumed
+    the Anthropic API; this codebase's `lib/ai/mock-interviewer.ts` actually
+    uses the Gemini SDK (`genAI.models.generateContent` with `contents` /
+    `parts`, roles `"user"`/`"model"`), not Anthropic — applied the same fix
+    intent (always prepend a synthetic seed message with role `"user"`,
+    unconditionally, not just when `history` is empty) using the correct
+    Gemini shapes. Root cause was identical to the spec's description: Gemini
+    also rejects `contents` arrays that don't start with role `"user"`, and
+    `history`'s first entry from the second turn onward is the interviewer's
+    opening question (`"interviewer"` → `"model"`).
+  - **Fix 2** (error logging): added `console.error` with a
+    `[mock-interviewer]` / `[research-agent]` / `[guide-generator]` prefix
+    before every fallback-return point in all three `lib/ai/*.ts` files (not
+    just the `catch` blocks — also the non-`"STOP"`/empty-response branches,
+    JSON-parse failures, and Zod validation failures).
+  - **Fix 3** (remove timer/"Question X of Y"): removed from
+    `InterviewPanel.tsx` and `MockInterviewChat.tsx` (including the
+    `elapsedMs`/`startedAt` ticking clock and the progress bar tied to
+    `totalQuestions`). `InterviewHeroCTA.tsx`'s resume state now reads
+    "Resume Interview — N exchange(s) so far" (interviewer-turn count, no
+    denominator). Since `guide` became unused as a result in
+    `MockInterviewChat.tsx`, `InterviewPanel.tsx`, and `InterviewHeroCTA.tsx`,
+    removed that prop from all three (and their call sites in
+    `PrepGuideView.tsx`) rather than leaving it dead.
+  - **Fix 4** (delete button): `lib/db/preps.ts`'s `deletePrep`,
+    `app/actions.ts`'s `deletePrepAction`, and `PrepList.tsx`'s per-card
+    delete affordance (inline confirm state, not `window.confirm`) written
+    exactly per spec.
+  - Verified: `npx tsc --noEmit` and `npm run build` both pass.
+    `lib/ai/mock-interviewer.ts`'s fix was verified structurally (a
+    Playwright-driven live 3-turn conversation was attempted but the Gemini
+    free-tier daily quota — see the `07`/`08` open questions below — was
+    already exhausted mid-session; the new Fix 2 logging correctly surfaced
+    the `429 RESOURCE_EXHAUSTED` cause instead of a silent fallback, which is
+    itself a live verification of Fix 2). In place of the live run, a
+    monkey-patched capture of the exact request payload sent to
+    `genAI.models.generateContent` confirmed `contents[0].role === "user"`
+    both for empty history and for a second-turn history that starts with an
+    `"interviewer"` turn — the precise case the bug was in. Fix 3 verified
+    visually via a live Playwright screenshot (no timer/countdown/"X of Y"
+    text anywhere in the panel). Fix 4 verified against the real Supabase DB:
+    a wrong-`sessionId` delete attempt correctly no-ops (`false`, row
+    untouched), a correct-`sessionId` delete removes the prep row and
+    cascade-deletes its `InterviewTurn` rows (checked a prep with 7 existing
+    turns directly), and a full browser-driven delete (click → inline
+    confirm → Delete → optimistic removal → hard page reload) confirmed the
+    card stays gone after refresh.
+  - **Follow-up worth a future look, not part of this spec:** while testing,
+    triggering a delete for a prep whose `runResearchAndGuide` background
+    call was still in flight surfaced a latent, narrow race: if that prep's
+    row is deleted mid-flight, `updatePrepResearch`/`updatePrepGuide` throw
+    (row gone), which is caught by `runResearchAndGuide`'s try/catch, which
+    then calls `markPrepFailed(prepId)` — which *also* throws for the same
+    reason, and that second throw is unhandled (logged as a server error, not
+    user-visible, no data corruption since the row is legitimately gone).
+    Harmless today but worth a `try/catch` (or a `deleteMany`-style no-op)
+    around `markPrepFailed` if this pattern becomes more common.
+
 ## In Progress
 
 - None.
