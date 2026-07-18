@@ -37,10 +37,9 @@ Must instruct the model to:
 
 **Call configuration**
 
-- Set `config: { responseMimeType: "application/json" }` on the
-  `generateContent` call — this makes Gemini emit raw JSON without markdown
-  fences in the common case, but is not a substitute for the defensive parsing
-  below
+- Set `response_format: { type: "json_object" }` on the `generateContent`
+  call — this makes the model emit raw JSON without markdown fences in the
+  common case, but is not a substitute for the defensive parsing below
 
 **Parsing**
 

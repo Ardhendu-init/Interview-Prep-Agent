@@ -1,6 +1,7 @@
 import { generateContent } from "./client";
 import { prepGuideSchema } from "../validation";
 import type { ResearchInput, ResearchFindings, PrepGuide } from "../types";
+import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 
 const SYSTEM_PROMPT = `You are a study-guide generator for a job-interview prep tool. Given a company/role and research findings about that company, produce a tailored interview prep guide.
 
@@ -41,6 +42,16 @@ function buildUserPrompt(input: ResearchInput, research: ResearchFindings): stri
   return lines.join("\n");
 }
 
+function buildMessages(
+  input: ResearchInput,
+  research: ResearchFindings,
+): ChatCompletionMessageParam[] {
+  return [
+    { role: "system", content: SYSTEM_PROMPT },
+    { role: "user", content: buildUserPrompt(input, research) },
+  ];
+}
+
 function parseGuide(text: string): unknown {
   const stripped = text.replace(/```json|```/g, "").trim();
   try {
@@ -61,21 +72,18 @@ export async function generateGuide(
   let response;
   try {
     response = await generateContent({
-      contents: buildUserPrompt(input, research),
-      config: {
-        systemInstruction: SYSTEM_PROMPT,
-        responseMimeType: "application/json",
-        maxOutputTokens: 8192,
-      },
+      messages: buildMessages(input, research),
+      response_format: { type: "json_object" },
+      max_completion_tokens: 8192,
     });
   } catch (error) {
     console.error("[guide-generator] generateGuide failed:", error);
     return { ...FALLBACK_GUIDE };
   }
 
-  const finishReason = response.candidates?.[0]?.finishReason;
-  const text = response.text;
-  if (!text || finishReason !== "STOP") {
+  const finishReason = response.choices[0]?.finish_reason;
+  const text = response.choices[0]?.message?.content;
+  if (!text || finishReason !== "stop") {
     console.error("[guide-generator] generateGuide got a non-STOP or empty response:", {
       finishReason,
       text,

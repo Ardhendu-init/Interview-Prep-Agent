@@ -18,7 +18,7 @@ hasn't been checked end to end locally.
    require a public repo)
 2. Import into Vercel
 3. Add environment variables in Vercel project settings (Production + Preview):
-   `GEMINI_API_KEY`, `DATABASE_URL`, `DIRECT_URL`
+   `OPENAI_API_KEY`, `DATABASE_URL`, `DIRECT_URL`
 4. Set the build command to run migrations before building:
    `prisma migrate deploy && next build` (override the default `next build` in
    Vercel's project settings, or add it as the `"build"` script in

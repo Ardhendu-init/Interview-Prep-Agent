@@ -767,6 +767,74 @@ memory or assumption, is the source of truth for what's actually built.
   `npx tsc --noEmit` passes; verified live via a temporary script (not
   committed) that both aliases return `200`/real text for this API key.
 
+## 2026-07-18: migrated AI provider from Gemini to OpenAI
+
+- Billing is now enabled on an OpenAI account with a real `OPENAI_API_KEY` in
+  hand, and the Gemini free-tier daily quota caps had already forced several
+  workarounds above (`LITE_MODEL` routing, `-latest` aliases, blocked
+  same-session comparison tests) — billed OpenAI access removes that
+  friction entirely. Separately, the hackathon's model-provider branding
+  favors OpenAI for this submission, reinforcing the same move.
+- `package.json`: removed `@google/genai`, added `openai` (official Node SDK,
+  `^6.48.0`).
+- `lib/ai/client.ts`: replaced the `GoogleGenAI` client with `OpenAI`, reading
+  `process.env.OPENAI_API_KEY` (only file that reads it, same rule as
+  before). `MODEL`/`LITE_MODEL` renamed from the Gemini names to `"gpt-5.4"`
+  and `"gpt-5.4-mini"`. `generateContent`/`generateContentLite` keep their
+  same exported shape and fallback-on-429 behavior, now wrapping
+  `openai.chat.completions.create` instead of
+  `genAI.models.generateContent`. `gpt-5.4-mini`, not the smaller
+  `gpt-5.4-nano`, was picked for the mock interviewer's tier — nano is sized
+  for classification/completion, and the interviewer's adaptive follow-up
+  questioning needs real judgment about answer quality.
+- `guide-generator.ts`: adapted to `response.choices[0].message.content` /
+  `response.choices[0].finish_reason === "stop"`. Gemini's `responseMimeType:
+  "application/json"` became `response_format: { type: "json_object" }`.
+  Still calls `generateContent` (Chat Completions), unchanged from the
+  initial migration plan.
+- `research-agent.ts`: **not** on Chat Completions — live testing against the
+  real API found that Chat Completions' `web_search_options` (the intended
+  replacement for Gemini's `tools: [{ googleSearch: {} }]` grounding) is only
+  accepted by dedicated search models (`gpt-4o-search-preview`,
+  `gpt-5-search-api`), not by `MODEL` (`gpt-5.4`) itself — confirmed via a
+  live 400 `"Unknown parameter: 'web_search_options'"` and cross-checked with
+  direct curl calls to both endpoints. `MODEL` only gets real web search
+  grounding through the Responses API's `tools: [{ type: "web_search" }]`,
+  also confirmed live. Given a choice between (a) Responses API for this file
+  only, keeping `MODEL`/`LITE_MODEL` and real search grounding, (b) downgrading
+  this file to a dedicated search model instead of `MODEL`, or (c) dropping
+  live search entirely, picked (a) — user's call, since it's the only option
+  that keeps both the top-tier model and the spec's core anti-fabrication
+  search requirement intact. `client.ts` gained a third export,
+  `generateSearchContent`, wrapping `openai.responses.create` with the same
+  fallback-on-429 shape as `generateContent`. `research-agent.ts` now reads
+  `response.output_text` / `response.status === "completed"` instead of a
+  Chat Completions shape. `guide-generator.ts` and `mock-interviewer.ts` are
+  unaffected. `05-ai-client-setup.md` and `06-research-agent.md` updated to
+  match.
+- `mock-interviewer.ts`: roles remapped `user`/`model` → `user`/`assistant`;
+  the system instruction moved from a separate config field to a
+  `{ role: "system", ... }` message at the start of `messages`. Removed the
+  synthetic "Let's begin the mock interview." seed message — that workaround
+  existed only because Gemini's `contents` array had to start with role
+  `"user"`; OpenAI's `messages` array accepts a system message followed
+  directly by an assistant message with no such constraint.
+- `.env` / `.env.example`: `GEMINI_API_KEY` → `OPENAI_API_KEY`.
+- Updated every Gemini-specific reference in `README.md`, `architecture.md`,
+  `code-standards.md`, `project-overview.md`, and feature-specs `05`–`08`,
+  `19`, and `21-manual-verification copy.md` to match (SDK name, env var
+  name, model names, response-shape details). Entries above this one in this
+  file describe Gemini-era state as it was true at the time and were left
+  as-is rather than rewritten — this is a historical log, not living
+  documentation.
+- Verified: `grep -riE "gemini|google.?genai|GoogleGenAI"` across the repo
+  (excluding `node_modules`/`.git`) returns zero hits outside this file's own
+  historical entries above; `grep -rn "process.env.OPENAI_API_KEY"` returns
+  exactly one hit, in `client.ts`. `npx tsc --noEmit` and `npm run lint` pass
+  clean. Live-verified end to end against the real OpenAI API: a real-company
+  `runResearch` call, a `generateGuide` call off that research, and one
+  `interviewTurn` call all returned real (non-fallback) output.
+
 ## Session Notes
 
 - To resume work: read this file first, then the next unimplemented

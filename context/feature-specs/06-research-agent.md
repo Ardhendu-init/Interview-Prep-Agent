@@ -20,7 +20,7 @@ typed object.
 **System prompt — required content, not exact wording**
 
 Must instruct the model to:
-1. Use Google Search grounding to gather: what the company does and its
+1. Use web search grounding to gather: what the company does and its
    size/stage, signals about their interview process (search review sites,
    forums, blog posts by past candidates), culture/comp signals if available
 2. Decide its own search queries based on what it learns — search again if
@@ -40,19 +40,27 @@ Must instruct the model to:
 
 **Search implementation**
 
-- Single call to `genAI.models.generateContent` with `config: { tools: [{
-  googleSearch: {} }] }`. Unlike a manual tool-call loop, Gemini's search
-  grounding is server-executed: the model issues as many internal search
-  queries as it needs and returns one final text response — there is no
-  `tool_use`/`tool_result` round trip to drive by hand
+- Single call to `openai.responses.create` (via `generateSearchContent` in
+  `client.ts`) with `tools: [{ type: "web_search" }]` set, `instructions:
+  SYSTEM_PROMPT`, and `input: <user prompt>`. Unlike a manual tool-call loop,
+  OpenAI's web search tool is server-executed: the model issues as many
+  internal search queries as it needs and returns one final response — there
+  is no `tool_calls` round trip to drive by hand
+- Uses the Responses API, not Chat Completions, specifically for this file —
+  confirmed live against the real API that Chat Completions' `web_search_options`
+  is only accepted by dedicated search models (`gpt-4o-search-preview`,
+  `gpt-5-search-api`), not `MODEL` itself, while the Responses API's
+  `web_search` tool works with `MODEL` directly. `guide-generator.ts` and
+  `mock-interviewer.ts` are unaffected and still use Chat Completions via
+  `generateContent`/`generateContentLite`
 - Treat the call as failed (return the fallback object below, do not attempt to
-  parse anything) if `response.text` is empty/undefined, or the first
-  candidate's `finishReason` is not `"STOP"` (e.g. `"SAFETY"`, `"MAX_TOKENS"`
-  with no usable text)
-- Grounding sources are available at
-  `response.candidates[0].groundingMetadata.groundingChunks[].web.uri` if
-  needed to cross-check the model's own `SOURCES:` line, but the parser below
-  reads `SOURCES:` from the text response, not from grounding metadata
+  parse anything) if `response.output_text` is empty/undefined, or
+  `response.status` is not `"completed"` (e.g. `"failed"`, `"incomplete"` with
+  no usable text)
+- Citation/source annotations are available on the output message's
+  `content[].annotations[].url_citation` if needed to cross-check the model's
+  own `SOURCES:` line, but the parser below reads `SOURCES:` from
+  `response.output_text`, not from the annotations
 
 **Parsing**
 

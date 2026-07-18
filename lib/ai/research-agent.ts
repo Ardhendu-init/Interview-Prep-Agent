@@ -1,8 +1,8 @@
-import { generateContent } from "./client";
+import { generateSearchContent } from "./client";
 import { researchFindingsSchema } from "../validation";
 import type { ResearchInput, ResearchFindings } from "../types";
 
-const SYSTEM_PROMPT = `You are a research agent for a job-interview prep tool. Given a company name and a job role (and optionally a job description), use Google Search to research the company for a candidate preparing to interview there.
+const SYSTEM_PROMPT = `You are a research agent for a job-interview prep tool. Given a company name and a job role (and optionally a job description), use web search to research the company for a candidate preparing to interview there.
 
 Gather:
 - What the company does, and its size/stage (startup, growth, public, etc.)
@@ -68,31 +68,28 @@ function buildUserPrompt(input: ResearchInput): string {
   return lines.join("\n");
 }
 
-// Never throws. On any failure (API error, empty/non-STOP response, or a
+// Never throws. On any failure (API error, empty/non-completed response, or a
 // parsed result that fails researchFindingsSchema validation) returns
 // FALLBACK_FINDINGS — a valid, typed object with an honest "could not
 // complete" companyOverview and empty/default values for the rest.
 export async function runResearch(input: ResearchInput): Promise<ResearchFindings> {
   let response;
   try {
-    response = await generateContent({
-      contents: buildUserPrompt(input),
-      config: {
-        systemInstruction: SYSTEM_PROMPT,
-        tools: [{ googleSearch: {} }],
-        maxOutputTokens: 8192,
-      },
+    response = await generateSearchContent({
+      instructions: SYSTEM_PROMPT,
+      input: buildUserPrompt(input),
+      tools: [{ type: "web_search" }],
+      max_output_tokens: 8192,
     });
   } catch (error) {
     console.error("[research-agent] runResearch failed:", error);
     return { ...FALLBACK_FINDINGS };
   }
 
-  const finishReason = response.candidates?.[0]?.finishReason;
-  const text = response.text;
-  if (!text || finishReason !== "STOP") {
-    console.error("[research-agent] runResearch got a non-STOP or empty response:", {
-      finishReason,
+  const text = response.output_text;
+  if (!text || response.status !== "completed") {
+    console.error("[research-agent] runResearch got a non-completed or empty response:", {
+      status: response.status,
       text,
     });
     return { ...FALLBACK_FINDINGS };

@@ -28,11 +28,13 @@ mid-interview crash is a worse experience than a slightly awkward recovery line.
 
 **Model**
 
-- Calls `generateContentLite` (`LITE_MODEL`, i.e. `gemini-flash-lite-latest`)
-  from `client.ts`, not `generateContent`/`MODEL`. One interview turn = one
-  call, and a single multi-turn session would exhaust `MODEL`'s low daily
-  free-tier cap by itself — routing straight to `LITE_MODEL` keeps interview
-  volume off the quota that research/guide generation depend on.
+- Calls `generateContentLite` (`LITE_MODEL`, i.e. `gpt-5.4-mini`) from
+  `client.ts`, not `generateContent`/`MODEL`. One interview turn = one call,
+  and cost compounds fast across a multi-turn session — routing straight to
+  `LITE_MODEL` keeps interview volume off the pricier tier that
+  research/guide generation use, while still using a model capable of real
+  reasoning about answer quality (not the smaller `gpt-5.4-nano` tier, which
+  is sized for classification/completion, not judgment calls).
 
 **System prompt — required content**
 
