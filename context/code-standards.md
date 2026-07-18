@@ -131,7 +131,7 @@ lib/
   validation.ts                                   — Zod schemas mirroring types.ts
   format.ts                                        — display-formatting helpers (e.g. relative dates)
   theme.ts                                          — theme list/type, localStorage key, no-flash init script (see ui-context.md)
-  panel-state.ts                                     — interview panel UI-state localStorage helpers (open/width), see 22-Interview-panel-redesign.md
+  panel-state.ts                                     — interview panel UI-state localStorage helpers (open/width), see 19-Interview-panel-redesign.md
   speech-recognition-types.ts                         — ambient SpeechRecognition types (not in lib.dom.d.ts) + feature-detection helper
   tts-preference.ts                                    — text-to-speech toggle localStorage helpers, see 18-uiux-enhancement.md section 2
 components/

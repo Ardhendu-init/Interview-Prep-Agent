@@ -55,9 +55,8 @@ Must instruct the model to:
 
 **Verify**
 
-- See `19-manual-verification.md` test matrix, item 5: one deliberately shallow
-  answer and one deliberately strong answer in the same session must produce
-  visibly different follow-up approaches
+- One deliberately shallow answer and one deliberately strong answer in the
+  same session must produce visibly different follow-up approaches
 
 **Status: done** — see `progress-tracker.md` for verification detail and the
 one open item (full shallow-vs-strong divergence check blocked by daily API

@@ -39,7 +39,7 @@ or any other raw Tailwind palette class, and never an arbitrary hex value.
 | Error                                                              | `text-danger` / `bg-danger`                                          |
 | Text on a danger-colored surface                                      | `text-danger-fg`                                                        |
 | Success (e.g. "saved" indicator, toast)                                   | `text-success`                                                            |
-| Interview panel surface (elevated)                                         | `bg-surface border-l border-border shadow-lg` (see `22-Interview-panel-redesign.md` — same surface color as every other card; elevation comes from the shadow and fixed positioning, not a distinct color) |
+| Interview panel surface (elevated)                                         | `bg-surface border-l border-border shadow-lg` (see `19-Interview-panel-redesign.md` — same surface color as every other card; elevation comes from the shadow and fixed positioning, not a distinct color) |
 
 ### Theme System
 
@@ -137,7 +137,7 @@ component.
   link into `/prep/[id]`). Empty state uses `components/ui/EmptyState.tsx`.
 - **Prep page (`app/prep/[id]/page.tsx`)**: breadcrumb, then guide content
   (research summary, concepts, questions) with an `InterviewHeroCTA` at the
-  top of that column. **Superseded by `22-Interview-panel-redesign.md`:** the
+  top of that column. **Superseded by `19-Interview-panel-redesign.md`:** the
   mock interview is no longer a bottom-of-page block — the Hero CTA opens
   `InterviewPanel` (`components/InterviewPanel.tsx`) as a resizable side panel
   docked to the right (desktop), expandable to a full-viewport focus mode, or
@@ -161,7 +161,7 @@ component.
   a slim non-intrusive progress bar (question count / total, elapsed timer,
   completion %) above the message list.
 - **Voice input** (same component, `18-uiux-enhancement.md` section 2): a mic
-  button beside the Send button (the layout slot `22-Interview-panel-
+  button beside the Send button (the layout slot `19-Interview-panel-
   redesign.md` originally reserved without an icon/handler — now wired up)
   toggles the Web Speech API's `SpeechRecognition`, writing the live
   transcript directly into the same editable draft state used for typing, so

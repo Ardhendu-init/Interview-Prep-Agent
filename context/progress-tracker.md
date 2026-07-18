@@ -7,12 +7,18 @@ memory or assumption, is the source of truth for what's actually built.
 
 - `18-uiux-enhancement.md` fully done, including section 2 (Voice Interview
   Support), implemented as its own step — see the `2026-07-18: voice
-  interview support` entry below. Next: `19-deployment-and-infra.md`.
+  interview support` entry below. `19-Interview-panel-redesign.md` (renumbered
+  from `22` — see the `2026-07-18: feature-specs renumbered` entry below) is
+  also done. All feature-specs are now implemented.
 
 ## Current Goal
 
-- Implement `01-database-schema.md` through `19-demo-and-submission.md`, in
-  order, per `ai-workflow-rules.md`.
+- All specs `01-database-schema.md` through `19-Interview-panel-redesign.md`
+  implemented, per `ai-workflow-rules.md`. Former specs `19`
+  (deployment-and-infra), `20` (demo-and-submission), and `21`
+  (manual-verification) were removed by direct instruction (unstarted,
+  hackathon-submission-specific content no longer needed) — see the
+  `2026-07-18: feature-specs renumbered` entry below.
 
 ## Completed
 
@@ -140,8 +146,8 @@ memory or assumption, is the source of truth for what's actually built.
     sub-40ms latency requirements, and DSA-heavy interview rounds pulled from
     the research findings, with real resource URLs (go.dev, Zerodha's own tech
     blog, System Design Primer). This satisfies the spec's core quality bar
-    (item 3) and the `19-manual-verification.md` item-4 requirement that
-    `whyItMatters` be company-specific rather than templated.
+    (item 3) and the (now-removed) manual verification checklist's item-4
+    requirement that `whyItMatters` be company-specific rather than templated.
   - **Could not complete the planned two-company comparison** (item 4 also
     asks for `whyItMatters` to differ between two different companies for the
     same role): a second live call against Google hit the Gemini free-tier's
@@ -151,8 +157,9 @@ memory or assumption, is the source of truth for what's actually built.
     doubled as a valid real-world confirmation of the "never throws" contract:
     the 429 correctly fell through the `catch` branch to `FALLBACK_GUIDE`
     rather than crashing. Re-run the second-company comparison once the daily
-    quota resets, before treating `19-manual-verification.md` item 4 as fully
-    closed. `npx tsc --noEmit` and `npm run build` both pass.
+    quota resets, before treating the (now-removed) manual verification
+    checklist's item 4 as fully closed. `npx tsc --noEmit` and `npm run build`
+    both pass.
 - `08-mock-interviewer.md` — `lib/ai/mock-interviewer.ts` written per spec:
   `interviewTurn(input, guide, history)` maps the full `InterviewTurn[]`
   history into Gemini's multi-turn `Content[]` format (`"candidate"` →
@@ -178,8 +185,9 @@ memory or assumption, is the source of truth for what's actually built.
     follow-up question, satisfying the feedback-then-next-question shape in
     requirement 4.
   - **Could not complete the full shallow-vs-strong divergence check** (spec's
-    "Verify" section / `19-manual-verification.md` item 5, which wants both a
-    shallow and a strong answer in the *same* session compared side by side):
+    "Verify" section / the (now-removed) manual verification checklist's item
+    5, which wants both a shallow and a strong answer in the *same* session
+    compared side by side):
     the shallow-answer call in the same test session hit the same Gemini
     free-tier daily cap (`GenerateRequestsPerDayPerProjectPerModel-FreeTier`,
     20 requests/day, HTTP 429) already flagged as an open item under
@@ -191,8 +199,8 @@ memory or assumption, is the source of truth for what's actually built.
     real quota exhaustion rather than a simulated one. Re-run the full
     shallow-vs-strong same-session comparison once the daily quota resets
     (next UTC day), alongside the still-open `07` second-company comparison,
-    before treating `19-manual-verification.md` item 5 as fully closed.
-    `npx tsc --noEmit` and `npm run build` both pass.
+    before treating the (now-removed) manual verification checklist's item 5
+    as fully closed. `npx tsc --noEmit` and `npm run build` both pass.
 - `09-server-actions-preps.md` — `lib/db/preps.ts` (`createPrep`,
   `getPrepById`, `listPrepsForSession`, `updatePrepResearch`,
   `updatePrepGuide`, `markPrepFailed`) and `app/actions.ts`
@@ -553,8 +561,9 @@ memory or assumption, is the source of truth for what's actually built.
     treating this step as fully done, per `ai-workflow-rules.md`'s "verified
     end to end, not just compiles/type-checks" bar.
 
-- `22-Interview-panel-redesign.md` — implemented ahead of the main
-  `01`→`19` sequence per direct instruction (a UI-only redesign, no
+- `19-Interview-panel-redesign.md` (numbered `22` at the time, before the
+  `2026-07-18: feature-specs renumbered` cleanup below) — implemented ahead of
+  the main `01`→`18` sequence per direct instruction (a UI-only redesign, no
   `lib/ai/`/`lib/db/`/`app/actions.ts` diff). New files: `lib/panel-state.ts`
   (localStorage open/width helpers), `components/InterviewHeroCTA.tsx`,
   `components/InterviewPanel.tsx` (resizable side panel / full-viewport focus
@@ -626,8 +635,10 @@ memory or assumption, is the source of truth for what's actually built.
       against it this step.
   - `npx tsc --noEmit`, `npm run lint`, and `npm run build` all pass clean.
 
-- `23-fix-and-delete-prep.md` — bundled fixes, done, implemented and verified
-  in order per the spec:
+- `20-fix-and-delete-prep.md` (numbered `23` at the time, before the
+  `2026-07-18: feature-specs renumbered` cleanup below; no standalone spec file
+  was ever written for this step — the bundled fixes were given as a direct
+  instruction) — bundled fixes, done, implemented and verified in order:
   - **Fix 1** (message role alternation bug): the spec's code sample assumed
     the Anthropic API; this codebase's `lib/ai/mock-interviewer.ts` actually
     uses the Gemini SDK (`genAI.models.generateContent` with `contents` /
@@ -692,23 +703,24 @@ memory or assumption, is the source of truth for what's actually built.
 
 ## Next Up
 
-- `19-deployment-and-infra.md`
+- None — all feature-specs (`01` through `19-Interview-panel-redesign.md`)
+  implemented.
 
 ## Open Questions
 
 - `07-guide-generator.md`'s two-company `whyItMatters` comparison (spec
-  "Verify" section / `19-manual-verification.md` item 4) is only half-done —
-  one company (Zerodha) verified with strong, specific output; a second
-  company (Google) was blocked by the Gemini free-tier's daily request cap
-  (20/day), not a code issue. Re-run the comparison once the quota resets
-  (next UTC day) and record the result here or in `19-manual-verification.md`
-  before treating that verification item as closed.
+  "Verify" section / the now-removed manual verification checklist's item 4)
+  is only half-done — one company (Zerodha) verified with strong, specific
+  output; a second company (Google) was blocked by the Gemini free-tier's
+  daily request cap (20/day), not a code issue. Re-run the comparison once the
+  quota resets (next UTC day) and record the result here before treating that
+  verification item as closed.
 - `08-mock-interviewer.md`'s same-session shallow-vs-strong divergence check
-  (spec "Verify" section / `19-manual-verification.md` item 5) is only
-  half-done for the same reason — the strong-answer branch was verified live,
-  the shallow-answer branch in the same test session hit the same daily quota
-  cap. Re-run alongside the `07` re-run once the quota resets, before treating
-  that verification item as closed.
+  (spec "Verify" section / the now-removed manual verification checklist's
+  item 5) is only half-done for the same reason — the strong-answer branch
+  was verified live, the shallow-answer branch in the same test session hit
+  the same daily quota cap. Re-run alongside the `07` re-run once the quota
+  resets, before treating that verification item as closed.
 - **Resolved in `12-home-page-prep-list.md`:** picked option (a) — the home
   page renders fine without a cookie yet (empty state), and the cookie/session
   row get created for real on the first Server Action call. Option (b) (a
@@ -822,9 +834,11 @@ memory or assumption, is the source of truth for what's actually built.
 - `.env` / `.env.example`: `GEMINI_API_KEY` → `OPENAI_API_KEY`.
 - Updated every Gemini-specific reference in `README.md`, `architecture.md`,
   `code-standards.md`, `project-overview.md`, and feature-specs `05`–`08`,
-  `19`, and `21-manual-verification copy.md` to match (SDK name, env var
-  name, model names, response-shape details). Entries above this one in this
-  file describe Gemini-era state as it was true at the time and were left
+  `19-deployment-and-infra.md`, and `21-manual-verification copy.md` to match
+  (SDK name, env var name, model names, response-shape details) — both of
+  those last two files were later removed, see the
+  `2026-07-18: feature-specs renumbered` entry below. Entries above this one
+  in this file describe Gemini-era state as it was true at the time and were left
   as-is rather than rewritten — this is a historical log, not living
   documentation.
 - Verified: `grep -riE "gemini|google.?genai|GoogleGenAI"` across the repo
@@ -839,7 +853,7 @@ memory or assumption, is the source of truth for what's actually built.
 
 - Implemented the previously-deferred voice input / optional TTS section as
   its own step. `components/MockInterviewChat.tsx`'s reserved empty slot
-  (`22-Interview-panel-redesign.md`'s "Explicitly cut" mic icon) now hosts a
+  (`19-Interview-panel-redesign.md`'s "Explicitly cut" mic icon) now hosts a
   real mic button; a new TTS toggle sits next to the "Mock Interview" heading.
 - `lib/speech-recognition-types.ts` (new): minimal ambient interfaces for
   `SpeechRecognition`/`webkitSpeechRecognition` (not in default
@@ -878,7 +892,7 @@ memory or assumption, is the source of truth for what's actually built.
 - Verified: `npx tsc --noEmit`, `npm run lint`, `npm run build` all pass
   clean. End-to-end browser verification via a temporary standalone
   Playwright install in the scratchpad directory (same pattern as steps
-  `17`/`22`/`23`) driving real headless Chromium against the dev server, with
+  `17`/`19`/`20`) driving real headless Chromium against the dev server, with
   a temporary `app/api/verify-tmp/route.ts` (removed after testing) that
   seeded a `"ready"` prep with a fabricated guide and one interviewer turn
   (avoided spending AI quota — this step touches no `lib/ai/` code):
@@ -959,6 +973,34 @@ memory or assumption, is the source of truth for what's actually built.
   `npm run build` both pass. Left `PrepGuideView.tsx`'s client-side
   `startedRef`/optimistic retry state as-is — it's now just a UI nicety, not
   the correctness boundary.
+
+## 2026-07-18: feature-specs renumbered
+
+- Removed by direct instruction: `19-deployment-and-infra.md`,
+  `20-demo-and-submission copy.md`, and `21-manual-verification copy.md` —
+  all three were still `Status: not started`, described hackathon-submission
+  logistics (deployment steps, demo video/deck, a manual test checklist) no
+  longer needed, and the manual-verification file even had a stray "copy" in
+  its filename from an earlier mishap. No code depended on any of the three.
+- Renumbered `22-Interview-panel-redesign.md` → `19-Interview-panel-redesign.md`
+  to close the resulting gap, so `feature-specs/` is a contiguous `01`–`19`
+  sequence again with no numbering skip.
+- The unfiled `23-fix-and-delete-prep.md` label (a direct-instruction bundle
+  of fixes with no standalone spec doc — see its own entry above) is now
+  referred to as `20-fix-and-delete-prep.md` for the same reason, though no
+  file by that name exists or ever did.
+- Updated every cross-reference to the old numbers: `code-standards.md` and
+  `ui-context.md`'s mentions of `22-Interview-panel-redesign.md`; feature-specs
+  `06`, `07`, and `08`'s "Verify" sections, which pointed at
+  `19-manual-verification.md`'s test-matrix items — reworded inline since that
+  checklist no longer exists as a file; and this file's own historical
+  entries and Current Phase/Goal/Next Up sections, updated in place rather
+  than left dangling since they're operational (living) state, not a pure
+  event log.
+- `npx tsc --noEmit` and `npm run build` are unaffected — this was a
+  docs-and-`context/`-only change, no application code touched. Verified via
+  `grep -rn "19-deployment-and-infra\|20-demo-and-submission\|21-manual-verification"
+  context/ feature-specs/` returning zero hits.
 
 ## Session Notes
 

@@ -27,8 +27,8 @@ Must instruct the model to:
    initial results are thin or a specific promising lead is worth following
 3. If the company is small/obscure and results are thin, say so plainly rather
    than fabricate — this is the single most important behavioral rule in this
-   file; if testing in `19-manual-verification.md` shows any fabrication for an
-   obscure company, fix this prompt first before touching any other code
+   file; if manual testing shows any fabrication for an obscure company, fix
+   this prompt first before touching any other code
 4. Respond, once done searching, in exactly this fixed-label plain-text format
    (not JSON — free-flowing prose reads better in these fields than forced JSON):
    ```
@@ -72,6 +72,8 @@ Must instruct the model to:
 
 **Verify**
 
-- See `19-manual-verification.md` test matrix, items 1-3
+- Manually test a well-known company, a mid-size/startup company, and an
+  obscure/small/private company; confirm the obscure case degrades honestly
+  instead of fabricating specifics
 
 **Status: done**

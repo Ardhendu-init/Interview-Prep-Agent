@@ -29,7 +29,7 @@ Must instruct the model to:
 3. Write each `whyItMatters` tied to the *specific* company/role context from the
    research findings, not generic advice — this is the single most important
    quality bar for this file; if guides read as generic templates during
-   `19-manual-verification.md`, tighten this instruction first
+   manual testing, tighten this instruction first
 4. Produce 6-10 questions mixing `technical`, `behavioral`, and `domain`
    categories, grounded in what the research found (e.g. research mentioning a
    real-time trading product should produce a domain question about real-time
@@ -50,8 +50,8 @@ Must instruct the model to:
 
 **Verify**
 
-- See `19-manual-verification.md` test matrix, item 4: confirm `whyItMatters`
-  text differs meaningfully between two different companies for the same role
+- Confirm `whyItMatters` text differs meaningfully between two different
+  companies for the same role
 
 **Status: done** — see `progress-tracker.md` for verification detail and the
 one open item (second-company comparison blocked by daily API quota).
