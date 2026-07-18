@@ -39,13 +39,18 @@ export async function interviewTurn(
   guide: PrepGuide,
   history: InterviewTurn[],
 ): Promise<string> {
-  const contents =
-    history.length > 0
-      ? history.map((turn) => ({
-          role: toGeminiRole(turn.role),
-          parts: [{ text: turn.content }],
-        }))
-      : "Begin the interview with your opening question.";
+  // The Gemini API requires `contents` to start with role "user". `history`'s
+  // first entry is the interviewer's opening question (role "interviewer" ->
+  // "model"), so without this seed every turn after the first sent a
+  // model-first array and the API rejected the request — always prepend it,
+  // unconditionally, rather than only when history is empty.
+  const contents = [
+    { role: "user" as const, parts: [{ text: "Let's begin the mock interview." }] },
+    ...history.map((turn) => ({
+      role: toGeminiRole(turn.role),
+      parts: [{ text: turn.content }],
+    })),
+  ];
 
   let response;
   try {
