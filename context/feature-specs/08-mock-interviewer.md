@@ -26,6 +26,14 @@ mid-interview crash is a worse experience than a slightly awkward recovery line.
   `10-server-actions-interview.md`) is responsible for persisting each new turn
   both before and after calling this function.
 
+**Model**
+
+- Calls `generateContentLite` (`LITE_MODEL`, i.e. `gemini-flash-lite-latest`)
+  from `client.ts`, not `generateContent`/`MODEL`. One interview turn = one
+  call, and a single multi-turn session would exhaust `MODEL`'s low daily
+  free-tier cap by itself — routing straight to `LITE_MODEL` keeps interview
+  volume off the quota that research/guide generation depend on.
+
 **System prompt — required content**
 
 Must instruct the model to:

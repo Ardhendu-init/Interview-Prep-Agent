@@ -735,6 +735,38 @@ memory or assumption, is the source of truth for what's actually built.
     pooled `DATABASE_URL` instead. See `architecture.md` and
     `feature-specs/01-database-schema.md` for detail.
 
+## 2026-07-18: mock interviewer moved to LITE_MODEL
+
+- `lib/ai/client.ts` gained a `generateContentLite` export calling
+  `LITE_MODEL` (`gemini-2.5-flash-lite`) directly, no `MODEL` attempt first.
+  `lib/ai/mock-interviewer.ts` now calls this instead of `generateContent`.
+  Reason: the interview makes one Gemini call per turn, so a single
+  multi-turn session was exhausting `MODEL`'s 20/day free-tier cap by
+  itself (and via the fallback-on-429 path, doubling up as extra calls to
+  `LITE_MODEL` anyway) — starving `research-agent.ts`/`guide-generator.ts`
+  of the quota they need for new preps. Research and guide generation still
+  use `MODEL` (`generateContent`, one call each per prep, quality-sensitive).
+  `05-ai-client-setup.md` and `08-mock-interviewer.md` updated to match.
+  `npx tsc --noEmit` passes; not yet re-verified against the live API (would
+  itself consume quota) — next real interview session is the practical test.
+
+## 2026-07-18: MODEL/LITE_MODEL switched to the "-latest" aliases
+
+- Live testing on a newly created API key hit `HTTP 404 "This model
+  models/gemini-2.5-flash is no longer available to new users"` on every
+  `research-agent.ts`/`guide-generator.ts` call — confirmed via a throwaway
+  script hitting `genAI.models.generateContent` directly for both
+  `gemini-2.5-flash` and `gemini-2.5-flash-lite` (both 404 for this key).
+  `genAI.models.list()` still lists both as if callable, which is misleading.
+  `gemini-flash-latest` and `gemini-flash-lite-latest` both succeeded for the
+  same key. `lib/ai/client.ts`'s `MODEL`/`LITE_MODEL` changed to those two
+  aliases; `05-ai-client-setup.md` and `08-mock-interviewer.md` updated to
+  match, including a note on why pinned dated versions rot for new accounts.
+  No other file hardcodes a model string (grepped `gemini-2\.5-flash` across
+  the repo — only the two spec files and `client.ts` matched, all now fixed).
+  `npx tsc --noEmit` passes; verified live via a temporary script (not
+  committed) that both aliases return `200`/real text for this API key.
+
 ## Session Notes
 
 - To resume work: read this file first, then the next unimplemented
