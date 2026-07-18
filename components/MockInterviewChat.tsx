@@ -2,13 +2,18 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { MessageCircle, Send } from "lucide-react";
+import { MessageCircle, Mic, MicOff, Send, Volume2, VolumeX } from "lucide-react";
 import type { InterviewTurn } from "../lib/types";
 import { submitInterviewAnswer } from "../app/actions";
 import { Card } from "./ui/Card";
 import { Button } from "./ui/Button";
 import { Textarea } from "./ui/Field";
 import { useToast } from "./ui/Toast";
+import {
+  getSpeechRecognitionConstructor,
+  type SpeechRecognitionLike,
+} from "../lib/speech-recognition-types";
+import { getTtsEnabled, setTtsEnabled as persistTtsEnabled } from "../lib/tts-preference";
 
 interface MockInterviewChatProps {
   prepId: string;
@@ -41,9 +46,123 @@ export function MockInterviewChat({ prepId, initialTurns }: MockInterviewChatPro
   const bottomRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
 
+  const [sttSupported, setSttSupported] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const baseDraftRef = useRef("");
+
+  const [ttsSupported, setTtsSupported] = useState(false);
+  const [ttsEnabled, setTtsEnabledState] = useState(false);
+  const lastSpokenIndexRef = useRef(initialTurns.length);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [turns.length, isPending]);
+
+  useEffect(() => {
+    // Browser feature support and localStorage aren't knowable at SSR time.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSttSupported(getSpeechRecognitionConstructor() !== null);
+    setTtsSupported(typeof window !== "undefined" && "speechSynthesis" in window);
+    setTtsEnabledState(getTtsEnabled());
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!ttsEnabled || !ttsSupported) {
+      lastSpokenIndexRef.current = turns.length;
+      return;
+    }
+    for (let i = lastSpokenIndexRef.current; i < turns.length; i++) {
+      const turn = turns[i];
+      if (turn.role === "interviewer") {
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(new SpeechSynthesisUtterance(turn.content));
+      }
+    }
+    lastSpokenIndexRef.current = turns.length;
+  }, [turns, ttsEnabled, ttsSupported]);
+
+  function stopRecording() {
+    const recognition = recognitionRef.current;
+    if (recognition) {
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+      recognition.stop();
+    }
+    recognitionRef.current = null;
+    setIsRecording(false);
+  }
+
+  function startRecording() {
+    const Ctor = getSpeechRecognitionConstructor();
+    if (!Ctor) {
+      setSttSupported(false);
+      return;
+    }
+    const recognition = new Ctor();
+    recognition.lang = "en-US";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    baseDraftRef.current = draft;
+
+    recognition.onresult = (event) => {
+      let transcript = "";
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      const base = baseDraftRef.current;
+      setDraft(base ? `${base} ${transcript}` : transcript);
+    };
+    recognition.onend = () => {
+      setIsRecording(false);
+      recognitionRef.current = null;
+    };
+    recognition.onerror = (event) => {
+      setIsRecording(false);
+      recognitionRef.current = null;
+      if (
+        event.error === "not-allowed" ||
+        event.error === "service-not-allowed" ||
+        event.error === "audio-capture"
+      ) {
+        setSttSupported(false);
+        showToast("Voice input isn't available: microphone access was denied.", "error");
+      }
+    };
+
+    try {
+      recognition.start();
+    } catch {
+      setSttSupported(false);
+      return;
+    }
+    recognitionRef.current = recognition;
+    setIsRecording(true);
+  }
+
+  function toggleRecording() {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  }
+
+  function toggleTts() {
+    const next = !ttsEnabled;
+    setTtsEnabledState(next);
+    persistTtsEnabled(next);
+    if (!next) {
+      window.speechSynthesis?.cancel();
+    }
+  }
 
   function start() {
     setError(null);
@@ -62,6 +181,10 @@ export function MockInterviewChat({ prepId, initialTurns }: MockInterviewChatPro
     const content = draft.trim();
     if (content === "") {
       return;
+    }
+
+    if (isRecording) {
+      stopRecording();
     }
 
     setError(null);
@@ -117,7 +240,26 @@ export function MockInterviewChat({ prepId, initialTurns }: MockInterviewChatPro
 
   return (
     <Card padding="md" className="flex flex-col gap-4">
-      <h2 className="text-lg font-medium text-fg">Mock Interview</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-medium text-fg">Mock Interview</h2>
+        <button
+          type="button"
+          onClick={toggleTts}
+          disabled={!ttsSupported}
+          aria-label={ttsEnabled ? "Disable reading questions aloud" : "Read questions aloud"}
+          aria-pressed={ttsEnabled}
+          title={
+            ttsSupported
+              ? undefined
+              : "Text-to-speech isn't supported in this browser"
+          }
+          className={`inline-flex size-8 items-center justify-center rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50 ${
+            ttsEnabled ? "text-accent hover:bg-surface-hover" : "text-fg-muted hover:bg-surface-hover hover:text-fg"
+          }`}
+        >
+          {ttsEnabled ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
+        </button>
+      </div>
 
       <div
         className="flex max-h-112 flex-col gap-4 overflow-y-auto px-0.5 py-1"
@@ -181,8 +323,23 @@ export function MockInterviewChat({ prepId, initialTurns }: MockInterviewChatPro
           rows={2}
           className="flex-1"
         />
-        {/* Reserved for future voice input — deliberately no icon/handler, see 22-Interview-panel-redesign.md */}
-        <div className="size-9 shrink-0" aria-hidden="true" />
+        <button
+          type="button"
+          onClick={toggleRecording}
+          disabled={isPending || !sttSupported}
+          aria-label={isRecording ? "Stop voice input" : "Start voice input"}
+          aria-pressed={isRecording}
+          title={
+            sttSupported ? undefined : "Voice input isn't supported in this browser"
+          }
+          className={`inline-flex size-9 shrink-0 items-center justify-center rounded-md border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg disabled:cursor-not-allowed disabled:opacity-50 ${
+            isRecording
+              ? "border-danger bg-danger/10 text-danger"
+              : "border-border text-fg-muted hover:border-accent/50 hover:text-accent"
+          }`}
+        >
+          {isRecording ? <MicOff className="size-4" /> : <Mic className="size-4" />}
+        </button>
         <Button
           onClick={send}
           disabled={isPending || draft.trim() === ""}

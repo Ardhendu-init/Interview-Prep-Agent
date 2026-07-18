@@ -160,6 +160,17 @@ component.
   typing-indicator bubble while the interviewer's next turn is generating, and
   a slim non-intrusive progress bar (question count / total, elapsed timer,
   completion %) above the message list.
+- **Voice input** (same component, `18-uiux-enhancement.md` section 2): a mic
+  button beside the Send button (the layout slot `22-Interview-panel-
+  redesign.md` originally reserved without an icon/handler — now wired up)
+  toggles the Web Speech API's `SpeechRecognition`, writing the live
+  transcript directly into the same editable draft state used for typing, so
+  the existing send/edit flow is unchanged. Renders visibly disabled with a
+  `title` tooltip (not hidden) when unsupported (e.g. Firefox), so the
+  reserved-width layout never jumps. An optional text-to-speech toggle next
+  to the "Mock Interview" heading reads new interviewer turns aloud via
+  `SpeechSynthesis` when enabled, persisted in `localStorage` via
+  `lib/tts-preference.ts`.
 
 ## Icons
 

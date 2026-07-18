@@ -154,7 +154,11 @@ Lives at the top of `/prep/[id]`, above the research summary card.
   single-entry-point decision above
 - **Voice/microphone icon**: reserve the layout space next to the send button
   (a fixed-width empty slot) but do not render an actual icon or any handler —
-  a real placeholder would invite someone to think it's functional
+  a real placeholder would invite someone to think it's functional.
+  **Superseded**: implemented in a later session as `18-uiux-enhancement.md`
+  section 2 — the reserved slot now hosts a working mic button
+  (`SpeechRecognition`-backed voice input, disabled-with-tooltip fallback
+  when unsupported). See `ui-context.md`'s Chat section.
 - **Practice Questions section behavior unchanged** — it stays exactly as
   currently built, always visible in the preparation column. Not collapsing
   or hiding it dynamically when the interview starts is a deliberate scope cut

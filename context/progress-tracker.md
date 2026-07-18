@@ -5,9 +5,9 @@ memory or assumption, is the source of truth for what's actually built.
 
 ## Current Phase
 
-- `18-uiux-enhancement.md` done, **except section 2 (Voice Interview
-  Support)** — explicitly deferred to a later session per direct instruction;
-  not started, not stubbed. Next: `19-deployment-and-infra.md`.
+- `18-uiux-enhancement.md` fully done, including section 2 (Voice Interview
+  Support), implemented as its own step — see the `2026-07-18: voice
+  interview support` entry below. Next: `19-deployment-and-infra.md`.
 
 ## Current Goal
 
@@ -692,10 +692,6 @@ memory or assumption, is the source of truth for what's actually built.
 
 ## Open Questions
 
-- `18-uiux-enhancement.md` section 2 (Voice Interview Support — Web Speech
-  API mic input, optional TTS readback) was explicitly deferred by the user to
-  a later session and is entirely unimplemented — no stub, no placeholder UI.
-  Pick this up as its own step before treating `18` as fully closed.
 - `07-guide-generator.md`'s two-company `whyItMatters` comparison (spec
   "Verify" section / `19-manual-verification.md` item 4) is only half-done —
   one company (Zerodha) verified with strong, specific output; a second
@@ -834,6 +830,108 @@ memory or assumption, is the source of truth for what's actually built.
   clean. Live-verified end to end against the real OpenAI API: a real-company
   `runResearch` call, a `generateGuide` call off that research, and one
   `interviewTurn` call all returned real (non-fallback) output.
+
+## 2026-07-18: voice interview support (`18-uiux-enhancement.md` section 2)
+
+- Implemented the previously-deferred voice input / optional TTS section as
+  its own step. `components/MockInterviewChat.tsx`'s reserved empty slot
+  (`22-Interview-panel-redesign.md`'s "Explicitly cut" mic icon) now hosts a
+  real mic button; a new TTS toggle sits next to the "Mock Interview" heading.
+- `lib/speech-recognition-types.ts` (new): minimal ambient interfaces for
+  `SpeechRecognition`/`webkitSpeechRecognition` (not in default
+  `lib.dom.d.ts`), plus `getSpeechRecognitionConstructor()` — kept to just
+  the members this app uses rather than a full `@types/*` dependency, per
+  the "no `any`" rule.
+  `lib/tts-preference.ts` (new): `localStorage` get/set for the TTS toggle,
+  same SSR-safe shape as `lib/theme.ts`/`lib/panel-state.ts`.
+- Design choice: the voice transcript writes directly into the existing
+  `draft` state (`setDraft(base + " " + transcript)`, replacing on each
+  `onresult` since `interimResults` already gives the cumulative
+  transcript-so-far) rather than a separate interim-transcript field — so
+  `send()`, `handleKeyDown`, and the `Textarea`'s existing `value`/`onChange`
+  needed no changes, and "user can edit before sending" falls out for free
+  from the already-editable `draft` state.
+  `send()` now force-stops any live recognition instance first (clearing its
+  handlers before `.stop()`) so a late `onresult` can't repopulate `draft`
+  after an optimistic turn was already sent and the field cleared.
+- Fallback: unsupported browsers (Firefox has no `SpeechRecognition`; also
+  covers a `not-allowed`/`service-not-allowed`/`audio-capture` permission
+  error) render the mic button visibly disabled with a `title` tooltip,
+  keeping the reserved `size-9` slot's width intact rather than reintroducing
+  the layout jump that reservation was meant to prevent. Same pattern reused
+  for the TTS toggle when `speechSynthesis` is absent.
+  TTS toggle reads new interviewer turns aloud via
+  `SpeechSynthesisUtterance` when enabled, tracked via a
+  last-spoken-index ref so it never replays `initialTurns` on mount or
+  speaks the candidate's own turn.
+- Two `react-hooks/set-state-in-effect` lint errors from the mount-time
+  feature-detection effect (browser support and `localStorage` aren't
+  knowable at SSR time) — same category already present in
+  `ThemeSwitcher.tsx`, fixed the same way: a single targeted
+  `eslint-disable-next-line` with an inline comment (the other two `setState`
+  calls in the same effect didn't need their own directive — lint only
+  flagged the first).
+- Verified: `npx tsc --noEmit`, `npm run lint`, `npm run build` all pass
+  clean. End-to-end browser verification via a temporary standalone
+  Playwright install in the scratchpad directory (same pattern as steps
+  `17`/`22`/`23`) driving real headless Chromium against the dev server, with
+  a temporary `app/api/verify-tmp/route.ts` (removed after testing) that
+  seeded a `"ready"` prep with a fabricated guide and one interviewer turn
+  (avoided spending AI quota — this step touches no `lib/ai/` code):
+  - Supported-browser path: mic button renders with the `lucide-mic` icon,
+    `aria-label="Start voice input"`, not disabled; clicking it calls
+    `recognition.start()` without throwing or logging any console error,
+    flips to the `lucide-mic-off` icon and the `border-danger
+    bg-danger/10 text-danger` recording style. TTS toggle switches
+    `VolumeX` → `Volume2` on click and persists `true` to
+    `localStorage["interview-tts-enabled"]`.
+  - Fallback path: with `window.SpeechRecognition` /
+    `webkitSpeechRecognition` / `speechSynthesis` deleted via
+    `page.addInitScript` (simulating Firefox), both the mic button and TTS
+    toggle render disabled with the correct `title` tooltip, in the exact
+    same screenshot layout as the supported case (no width/position shift).
+  - Zero browser console errors in either path.
+  - **Verification ceiling, flagged explicitly, not claimed as covered**:
+    headless Chromium has no real audio input and this repo has no
+    `--use-fake-device-for-media-stream` setup, so actual recognized speech
+    becoming text, and actual synthesized audio being audible, were **not**
+    verified by automation — only that the feature-detection, click
+    handlers, visual state changes, and fallback rendering all work without
+    error. A real-microphone pass in Chrome (and a Firefox fallback spot
+    check) is still worth doing manually before fully closing this out,
+    consistent with how this repo treats "compiles" vs. "verified end to
+    end" everywhere else in this file.
+  - All seeded rows (one `Session`, one `InterviewPrep`, one `InterviewTurn`)
+    deleted via the temp route's own `DELETE` handler in the same session;
+    the temp route file itself removed afterward. `git status` confirms only
+    the intended files changed.
+- **Bug found from a real-browser screenshot after this step, not caught by
+  the headless Playwright pass above** (its low-resolution element crop
+  masked it — only checking the SVG's class name, not its actual visible
+  pixels, gave a false pass): the mic button rendered as a near-empty box
+  with only a sliver of the icon visible. Root cause: it used the shared
+  `components/ui/Button.tsx` primitive with a fixed `size-9` plus a `p-0`
+  override, but `Button`'s `md` size already applies `px-4 py-2`, and
+  Tailwind's generated stylesheet order (not the `className` string's
+  left-to-right order) decides which same-specificity utility wins — here
+  `px-4 py-2` won over `p-0`, leaving only ~4px of content width inside a
+  fixed 36px box for a 16px icon. `components/InterviewPanel.tsx` had
+  already solved this exact class of problem for its own icon-only controls
+  (`Maximize2`/`X` buttons) by not using the `Button` component at all for
+  icon buttons — a raw `<button>` with `inline-flex size-8 items-center
+  justify-center` and no competing padding utility. Fixed both the mic
+  button and the TTS toggle the same way: raw `<button>` elements, no
+  `Button` import for either, matching `InterviewPanel.tsx`'s established
+  convention (mic: bordered `size-9`, outline-style, `border-danger
+  bg-danger/10 text-danger` while recording; TTS: borderless `size-8`,
+  `text-accent` when enabled). Re-verified visually via the same temporary
+  Playwright setup — the icon renders fully visible in both idle and
+  recording states, and `npx tsc --noEmit`/`npm run lint`/`npm run build`
+  all still pass. **Lesson for future icon-only buttons**: don't use
+  `Button` with a `size-*`+`p-0` override; use a raw `<button>` matching
+  `InterviewPanel.tsx`'s pattern, and verify with a real (or
+  element-cropped-and-actually-viewed) screenshot, not just a DOM
+  attribute/class-name check.
 
 ## Session Notes
 
