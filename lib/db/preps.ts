@@ -93,3 +93,10 @@ export async function markPrepFailed(prepId: string): Promise<void> {
     data: { status: "failed" },
   });
 }
+
+export async function deletePrep(sessionId: string, prepId: string): Promise<boolean> {
+  const result = await prisma.interviewPrep.deleteMany({
+    where: { id: prepId, sessionId },
+  });
+  return result.count > 0;
+}

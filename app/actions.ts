@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { getOrCreateSession } from "../lib/db/session";
 import {
   createPrep,
@@ -7,6 +8,7 @@ import {
   updatePrepResearch,
   updatePrepGuide,
   markPrepFailed,
+  deletePrep,
 } from "../lib/db/preps";
 import { listTurnsForPrep, appendTurn } from "../lib/db/turns";
 import { researchInputSchema, candidateAnswerSchema } from "../lib/validation";
@@ -91,4 +93,12 @@ export async function submitInterviewAnswer(
   const turn = await appendTurn(prepId, "interviewer", reply);
 
   return { turn };
+}
+
+export async function deletePrepAction(prepId: string): Promise<{ success: boolean } | { error: string }> {
+  const { id: sessionId } = await getOrCreateSession();
+  const deleted = await deletePrep(sessionId, prepId);
+  if (!deleted) return { error: "Couldn't delete that — it may not exist or isn't yours." };
+  revalidatePath("/");
+  return { success: true };
 }
